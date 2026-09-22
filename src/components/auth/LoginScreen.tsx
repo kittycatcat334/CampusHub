@@ -20,7 +20,8 @@ import {
   Wrench,
   ShieldAlert,
   Building2,
-  ChevronDown
+  ChevronDown,
+  LogIn
 } from 'lucide-react';
 import { BuilderSVCodeModal } from './BuilderSVCodeModal';
 import { InstitutionsManagerModal } from '../admin/InstitutionsManagerModal';
@@ -30,6 +31,7 @@ export const LoginScreen: React.FC = () => {
     login,
     loginAsUser,
     createCustomAccount,
+    verifyStaffCode,
     staffVerificationCode,
     institutions,
     currentInstitution,
@@ -76,8 +78,8 @@ export const LoginScreen: React.FC = () => {
     } else if (role === 'teacher') {
       setEmail(teacherDemoUsers[0]?.email || 'r.chen@university.edu');
       setPassword(teacherDemoUsers[0]?.password || 'faculty123');
-      // Initialize with active SV-code for quick developer testing
-      setSvCode(staffVerificationCode);
+      // Initialize with teacher verification code 6565
+      setSvCode(staffVerificationCode || '6565');
     } else if (role === 'principal') {
       setEmail(principalDemoUsers[0]?.email || `principal@${currentInstitution.domain}`);
       setPassword(principalDemoUsers[0]?.password || 'principal123');
@@ -99,7 +101,7 @@ export const LoginScreen: React.FC = () => {
     }
 
     if (activePortal === 'teacher' && !svCode.trim()) {
-      setError('Staff Verification Code (SV-Code) is required for teacher authentication. Click "Builder Setup" to configure or view the active code.');
+      setError('Teacher verification code is required. Please enter code 6565.');
       return;
     }
 
@@ -120,21 +122,29 @@ export const LoginScreen: React.FC = () => {
     setEmail(user.email);
     setPassword(user.password || (user.role === 'teacher' ? 'faculty123' : 'student123'));
     if (user.role === 'teacher') {
-      setSvCode(staffVerificationCode);
+      setSvCode(staffVerificationCode || '6565');
     }
     loginAsUser(user);
   };
 
   const handleRegister = (e: React.FormEvent) => {
     e.preventDefault();
+    setError(null);
     if (!regName.trim() || !regEmail.trim() || !regPassword) {
       setError('Please fill in all registration fields.');
       return;
     }
 
-    if (activePortal === 'teacher' && !regSvCode.trim()) {
-      setError('Staff Verification Code (SV-Code) is required to register a faculty account.');
-      return;
+    if (activePortal === 'teacher') {
+      const code = regSvCode.trim();
+      if (!code) {
+        setError('Teacher verification code is required. Teachers must enter code 6565.');
+        return;
+      }
+      if (code !== '6565' && !verifyStaffCode(code)) {
+        setError('Invalid teacher code. Teachers must enter code 6565 to create an account.');
+        return;
+      }
     }
 
     const res = createCustomAccount(regName, regEmail, activePortal, regDepartment, regPassword, regSvCode);
@@ -314,64 +324,142 @@ export const LoginScreen: React.FC = () => {
         <div className="w-full max-w-md">
           {/* Card Container */}
           <div className="bg-slate-800/90 backdrop-blur-xl border border-slate-700/70 rounded-3xl p-6 sm:p-8 shadow-2xl shadow-black/40">
-            {/* Quad Portal Switcher Tabs: Student, Faculty, Principal, Admin */}
-            <div className="flex p-1 bg-slate-900/80 rounded-2xl border border-slate-700/60 mb-6">
+            {/* Top Primary Mode Toggle: Sign In vs Create Account */}
+            <div className="flex p-1 bg-slate-900/90 rounded-2xl border border-slate-700/80 mb-5">
               <button
                 type="button"
-                id="tab-portal-student"
-                onClick={() => handlePortalSwitch('student')}
-                className={`flex-1 flex items-center justify-center gap-1 py-2 px-1.5 rounded-xl text-xs font-bold transition-all ${
-                  activePortal === 'student'
+                id="btn-mode-signin"
+                onClick={() => { setIsRegistering(false); setError(null); }}
+                className={`flex-1 py-2 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
+                  !isRegistering
                     ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30'
-                    : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/40'
+                    : 'text-slate-400 hover:text-slate-200'
                 }`}
               >
-                <GraduationCap className="w-3.5 h-3.5" />
-                <span>Student</span>
+                <LogIn className="w-3.5 h-3.5" />
+                <span>Sign In</span>
               </button>
-
               <button
                 type="button"
-                id="tab-portal-teacher"
-                onClick={() => handlePortalSwitch('teacher')}
-                className={`flex-1 flex items-center justify-center gap-1 py-2 px-1.5 rounded-xl text-xs font-bold transition-all ${
-                  activePortal === 'teacher'
-                    ? 'bg-purple-600 text-white shadow-md shadow-purple-600/30'
-                    : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/40'
+                id="btn-mode-register"
+                onClick={() => {
+                  setIsRegistering(true);
+                  setError(null);
+                  if (activePortal !== 'student' && activePortal !== 'teacher') {
+                    setActivePortal('student');
+                  }
+                  if (!regSvCode) setRegSvCode('6565');
+                }}
+                className={`flex-1 py-2 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
+                  isRegistering
+                    ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30'
+                    : 'text-slate-400 hover:text-slate-200'
                 }`}
               >
-                <BookOpen className="w-3.5 h-3.5" />
-                <span>Faculty</span>
-              </button>
-
-              <button
-                type="button"
-                id="tab-portal-principal"
-                onClick={() => handlePortalSwitch('principal')}
-                className={`flex-1 flex items-center justify-center gap-1 py-2 px-1.5 rounded-xl text-xs font-bold transition-all ${
-                  activePortal === 'principal'
-                    ? 'bg-amber-600 text-white shadow-md shadow-amber-600/30'
-                    : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/40'
-                }`}
-              >
-                <School className="w-3.5 h-3.5" />
-                <span>Principal</span>
-              </button>
-
-              <button
-                type="button"
-                id="tab-portal-admin"
-                onClick={() => handlePortalSwitch('admin')}
-                className={`flex-1 flex items-center justify-center gap-1 py-2 px-1.5 rounded-xl text-xs font-bold transition-all ${
-                  activePortal === 'admin'
-                    ? 'bg-rose-600 text-white shadow-md shadow-rose-600/30'
-                    : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/40'
-                }`}
-              >
-                <ShieldAlert className="w-3.5 h-3.5 text-rose-300" />
-                <span>Admin</span>
+                <UserPlus className="w-3.5 h-3.5" />
+                <span>Create Account</span>
               </button>
             </div>
+
+            {/* Portal Switcher Tabs or Account Type Selector */}
+            {!isRegistering ? (
+              /* Quad Portal Switcher Tabs: Student, Faculty, Principal, Admin */
+              <div className="flex p-1 bg-slate-900/80 rounded-2xl border border-slate-700/60 mb-6">
+                <button
+                  type="button"
+                  id="tab-portal-student"
+                  onClick={() => handlePortalSwitch('student')}
+                  className={`flex-1 flex items-center justify-center gap-1 py-2 px-1.5 rounded-xl text-xs font-bold transition-all ${
+                    activePortal === 'student'
+                      ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30'
+                      : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/40'
+                  }`}
+                >
+                  <GraduationCap className="w-3.5 h-3.5" />
+                  <span>Student</span>
+                </button>
+
+                <button
+                  type="button"
+                  id="tab-portal-teacher"
+                  onClick={() => handlePortalSwitch('teacher')}
+                  className={`flex-1 flex items-center justify-center gap-1 py-2 px-1.5 rounded-xl text-xs font-bold transition-all ${
+                    activePortal === 'teacher'
+                      ? 'bg-purple-600 text-white shadow-md shadow-purple-600/30'
+                      : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/40'
+                  }`}
+                >
+                  <BookOpen className="w-3.5 h-3.5" />
+                  <span>Faculty</span>
+                </button>
+
+                <button
+                  type="button"
+                  id="tab-portal-principal"
+                  onClick={() => handlePortalSwitch('principal')}
+                  className={`flex-1 flex items-center justify-center gap-1 py-2 px-1.5 rounded-xl text-xs font-bold transition-all ${
+                    activePortal === 'principal'
+                      ? 'bg-amber-600 text-white shadow-md shadow-amber-600/30'
+                      : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/40'
+                  }`}
+                >
+                  <School className="w-3.5 h-3.5" />
+                  <span>Principal</span>
+                </button>
+
+                <button
+                  type="button"
+                  id="tab-portal-admin"
+                  onClick={() => handlePortalSwitch('admin')}
+                  className={`flex-1 flex items-center justify-center gap-1 py-2 px-1.5 rounded-xl text-xs font-bold transition-all ${
+                    activePortal === 'admin'
+                      ? 'bg-rose-600 text-white shadow-md shadow-rose-600/30'
+                      : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/40'
+                  }`}
+                >
+                  <ShieldAlert className="w-3.5 h-3.5 text-rose-300" />
+                  <span>Admin</span>
+                </button>
+              </div>
+            ) : (
+              /* Account Type Picker for Registration: Student vs Teacher */
+              <div className="mb-5 space-y-2">
+                <label className="block text-xs font-semibold text-slate-300">Register as:</label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => { setActivePortal('student'); setError(null); }}
+                    className={`p-3 rounded-2xl border text-center transition-all ${
+                      activePortal === 'student'
+                        ? 'border-indigo-500 bg-indigo-600/30 text-white ring-2 ring-indigo-500/40 shadow-lg shadow-indigo-600/20'
+                        : 'border-slate-700 bg-slate-900/60 text-slate-400 hover:text-slate-200'
+                    }`}
+                  >
+                    <GraduationCap className="w-5 h-5 mx-auto mb-1 text-indigo-400" />
+                    <span className="text-xs font-bold block">Student</span>
+                    <span className="text-[10px] text-emerald-400 font-medium">No code needed</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setActivePortal('teacher');
+                      setError(null);
+                      if (!regSvCode) setRegSvCode('6565');
+                    }}
+                    className={`p-3 rounded-2xl border text-center transition-all ${
+                      activePortal === 'teacher'
+                        ? 'border-purple-500 bg-purple-600/30 text-white ring-2 ring-purple-500/40 shadow-lg shadow-purple-600/20'
+                        : 'border-slate-700 bg-slate-900/60 text-slate-400 hover:text-slate-200'
+                    }`}
+                  >
+                    <BookOpen className="w-5 h-5 mx-auto mb-1 text-purple-400" />
+                    <span className="text-xs font-bold block">Teacher / Faculty</span>
+                    <span className="text-[10px] text-amber-400 font-bold">Code: 6565</span>
+                  </button>
+                </div>
+              </div>
+            )}
 
             {/* Active Institution Badge */}
             <div className="mb-4 flex items-center justify-between bg-slate-900/60 p-2.5 rounded-2xl border border-slate-700/60">
@@ -500,13 +588,13 @@ export const LoginScreen: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Staff Verification Code (SV-Code) - Teacher Portal Exclusive */}
+                {/* Teacher Verification Code - Teacher Portal Exclusive */}
                 {activePortal === 'teacher' && (
                   <div className="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/30 animate-in fade-in duration-200 space-y-2">
                     <div className="flex items-center justify-between">
                       <label className="text-xs font-bold text-amber-300 flex items-center gap-1.5">
                         <ShieldCheck className="w-4 h-4 text-amber-400 shrink-0" />
-                        <span>Staff Verification Code (SV-Code) *</span>
+                        <span>Teacher Verification Code (Code: 6565) *</span>
                       </label>
                       <button
                         type="button"
@@ -528,22 +616,22 @@ export const LoginScreen: React.FC = () => {
                         required
                         value={svCode}
                         onChange={(e) => setSvCode(e.target.value.toUpperCase())}
-                        placeholder="e.g. SV-TEACH-2026"
+                        placeholder="6565"
                         className="w-full text-xs font-mono font-bold tracking-wider pl-9 pr-20 py-2 rounded-xl bg-slate-900 border border-amber-500/40 text-amber-200 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-amber-500/40 focus:border-amber-400 transition-all"
                       />
                       <button
                         type="button"
-                        onClick={() => setSvCode(staffVerificationCode)}
+                        onClick={() => setSvCode('6565')}
                         className="absolute right-1.5 top-1/2 -translate-y-1/2 text-[10px] font-bold px-2 py-1 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/30 transition-all"
-                        title="Quick-fill currently active master SV-code"
+                        title="Quick-fill teacher code 6565"
                       >
-                        Fill Code
+                        Fill 6565
                       </button>
                     </div>
 
                     <div className="flex items-center justify-between text-[10px] text-slate-400 pt-0.5">
-                      <span className="text-amber-300/80 font-medium">Faculty clearance required</span>
-                      <span className="font-mono text-slate-400">Master: <strong className="text-amber-300">{staffVerificationCode}</strong></span>
+                      <span className="text-amber-300/80 font-medium">Teachers require code 6565</span>
+                      <span className="font-mono text-slate-400">Teacher Code: <strong className="text-amber-300">6565</strong></span>
                     </div>
                   </div>
                 )}
@@ -593,10 +681,17 @@ export const LoginScreen: React.FC = () => {
             ) : (
               /* New Account Registration Form */
               <form onSubmit={handleRegister} className="space-y-3">
-                <div className="p-3 bg-indigo-500/10 border border-indigo-500/30 rounded-xl text-xs text-indigo-200 mb-2 flex items-center gap-2">
-                  <Sparkles className="w-4 h-4 text-indigo-400 shrink-0" />
-                  <span>Registering new {activePortal === 'student' ? 'Student' : 'Faculty'} account</span>
-                </div>
+                {activePortal === 'student' ? (
+                  <div className="p-3 bg-indigo-500/10 border border-indigo-500/30 rounded-xl text-xs text-indigo-200 mb-2 flex items-center gap-2">
+                    <Sparkles className="w-4 h-4 text-indigo-400 shrink-0" />
+                    <span>Creating new <strong>Student Account</strong>. No verification code required.</span>
+                  </div>
+                ) : (
+                  <div className="p-3 bg-purple-500/10 border border-purple-500/30 rounded-xl text-xs text-purple-200 mb-2 flex items-center gap-2">
+                    <KeyRound className="w-4 h-4 text-amber-400 shrink-0" />
+                    <span>Creating new <strong>Teacher / Faculty Account</strong>. Code <strong>6565</strong> required.</span>
+                  </div>
+                )}
 
                 <div>
                   <label className="block text-[11px] font-semibold text-slate-300 mb-1">Full Name</label>
@@ -605,7 +700,7 @@ export const LoginScreen: React.FC = () => {
                     required
                     value={regName}
                     onChange={(e) => setRegName(e.target.value)}
-                    placeholder={activePortal === 'student' ? 'e.g. Jordan Hayes' : 'e.g. Dr. Arthur Vance'}
+                    placeholder={activePortal === 'student' ? 'e.g. Jordan Hayes' : 'e.g. Prof. Arthur Vance'}
                     className="w-full text-xs px-3 py-2 rounded-lg bg-slate-900/80 border border-slate-700 text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
                   />
                 </div>
@@ -617,13 +712,13 @@ export const LoginScreen: React.FC = () => {
                     required
                     value={regEmail}
                     onChange={(e) => setRegEmail(e.target.value)}
-                    placeholder="j.hayes@university.edu"
+                    placeholder={activePortal === 'student' ? 'student@university.edu' : 'faculty@university.edu'}
                     className="w-full text-xs px-3 py-2 rounded-lg bg-slate-900/80 border border-slate-700 text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-[11px] font-semibold text-slate-300 mb-1">Department</label>
+                  <label className="block text-[11px] font-semibold text-slate-300 mb-1">Department / Major</label>
                   <input
                     type="text"
                     required
@@ -648,18 +743,18 @@ export const LoginScreen: React.FC = () => {
 
                 {/* SV-Code for Teacher Registration */}
                 {activePortal === 'teacher' && (
-                  <div className="p-3 bg-amber-500/10 border border-amber-500/30 rounded-xl space-y-1.5">
+                  <div className="p-3 bg-amber-500/10 border border-amber-500/40 rounded-xl space-y-1.5 animate-in fade-in duration-200">
                     <div className="flex items-center justify-between">
                       <label className="text-[11px] font-bold text-amber-300 flex items-center gap-1.5">
                         <ShieldCheck className="w-3.5 h-3.5 text-amber-400" />
-                        <span>Staff Verification Code (SV-Code) *</span>
+                        <span>Teacher Verification Code (Code: 6565) *</span>
                       </label>
                       <button
                         type="button"
                         onClick={() => setIsBuilderModalOpen(true)}
                         className="text-[10px] text-amber-400 hover:underline font-semibold"
                       >
-                        Builder Setup
+                        Code Info
                       </button>
                     </div>
                     <div className="relative">
@@ -668,34 +763,38 @@ export const LoginScreen: React.FC = () => {
                         required
                         value={regSvCode}
                         onChange={(e) => setRegSvCode(e.target.value.toUpperCase())}
-                        placeholder={`e.g. ${staffVerificationCode}`}
-                        className="w-full text-xs font-mono font-bold tracking-wider px-3 py-1.5 rounded-lg bg-slate-900 border border-amber-500/40 text-amber-200 placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-amber-400"
+                        placeholder="6565"
+                        className="w-full text-xs font-mono font-bold tracking-wider pl-3 pr-20 py-2 rounded-lg bg-slate-900 border border-amber-500/40 text-amber-200 placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-amber-400"
                       />
                       <button
                         type="button"
-                        onClick={() => setRegSvCode(staffVerificationCode)}
-                        className="absolute right-1 top-1/2 -translate-y-1/2 text-[9px] font-bold px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30"
+                        onClick={() => setRegSvCode('6565')}
+                        className="absolute right-1.5 top-1/2 -translate-y-1/2 text-[10px] font-bold px-2 py-1 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30 hover:bg-amber-500/30 transition-colors"
                       >
-                        Fill
+                        Fill 6565
                       </button>
                     </div>
-                    <p className="text-[10px] text-slate-400">Required to authorize faculty account registration</p>
+                    <p className="text-[10px] text-slate-300">Teachers must enter <strong>6565</strong> to create a faculty account.</p>
                   </div>
                 )}
 
                 <div className="flex gap-2 pt-2">
                   <button
                     type="button"
-                    onClick={() => setIsRegistering(false)}
-                    className="flex-1 py-2 rounded-lg bg-slate-700 text-slate-300 hover:bg-slate-600 text-xs font-semibold"
+                    onClick={() => { setIsRegistering(false); setError(null); }}
+                    className="flex-1 py-2.5 rounded-xl bg-slate-700 text-slate-300 hover:bg-slate-600 text-xs font-semibold transition-colors"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
-                    className="flex-1 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold shadow-sm"
+                    className={`flex-1 py-2.5 rounded-xl text-white text-xs font-bold shadow-md transition-all ${
+                      activePortal === 'student'
+                        ? 'bg-indigo-600 hover:bg-indigo-500 shadow-indigo-600/30'
+                        : 'bg-purple-600 hover:bg-purple-500 shadow-purple-600/30'
+                    }`}
                   >
-                    Create & Sign In
+                    {activePortal === 'student' ? 'Create Student Account' : 'Create Teacher Account'}
                   </button>
                 </div>
               </form>

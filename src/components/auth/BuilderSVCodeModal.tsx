@@ -217,10 +217,10 @@ export const BuilderSVCodeModal: React.FC<BuilderSVCodeModalProps> = ({
             <div className="flex flex-wrap gap-1.5">
               <button
                 type="button"
-                onClick={() => handlePreset(DEFAULT_SV_CODE)}
-                className="text-[11px] font-mono px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition-colors"
+                onClick={() => handlePreset('6565')}
+                className="text-[11px] font-mono px-2.5 py-1 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 font-bold transition-colors"
               >
-                {DEFAULT_SV_CODE} (Default)
+                6565 (Default Teacher Code)
               </button>
               <button
                 type="button"

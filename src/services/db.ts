@@ -33,7 +33,7 @@ export const DEFAULT_INSTITUTIONS: Institution[] = [
     principalName: 'Dr. Evelyn Montgomery',
     principalEmail: 'principal@campushub.edu',
     principalTitle: 'Institutional Principal & Academic Dean',
-    staffVerificationCode: 'SV-TEACH-2026',
+    staffVerificationCode: '6565',
     portalSubdomain: 'portal.campushub.edu',
     isPrimary: true,
     createdAt: '2026-08-01T00:00:00Z'
@@ -56,7 +56,7 @@ export const DEFAULT_INSTITUTIONS: Institution[] = [
     principalName: 'Dr. Arthur Sterling',
     principalEmail: 'principal@apextech.edu',
     principalTitle: 'Principal & Rector of Technology',
-    staffVerificationCode: 'SV-APEX-2026',
+    staffVerificationCode: '6565',
     portalSubdomain: 'apex.campushub.edu',
     isPrimary: false,
     createdAt: '2026-08-15T00:00:00Z'
@@ -985,7 +985,7 @@ const KEYS = {
 };
 
 // Default Staff Verification Code configured for teacher authorization
-export const DEFAULT_SV_CODE = 'SV-TEACH-2026';
+export const DEFAULT_SV_CODE = '6565';
 
 // Event Dispatcher for Realtime Reactive State across components
 type DBListener = () => void;
@@ -1287,21 +1287,28 @@ export const db = {
 
   // Staff Verification Code (SV-Code) - Builder controlled for teacher verification
   getStaffVerificationCode(): string {
-    const code = localStorage.getItem(KEYS.SV_CODE);
+    const code = safeStorageGet(KEYS.SV_CODE);
     return code && code.trim() ? code.trim() : DEFAULT_SV_CODE;
   },
 
   setStaffVerificationCode(code: string): string {
     const cleanCode = code.trim().toUpperCase() || DEFAULT_SV_CODE;
-    localStorage.setItem(KEYS.SV_CODE, cleanCode);
+    safeStorageSet(KEYS.SV_CODE, cleanCode);
     notifyDBChange();
     return cleanCode;
   },
 
   verifyStaffCode(inputCode?: string): boolean {
     if (!inputCode || !inputCode.trim()) return false;
-    const currentCode = this.getStaffVerificationCode().toUpperCase();
-    return inputCode.trim().toUpperCase() === currentCode;
+    const cleanInput = inputCode.trim();
+    const currentCode = this.getStaffVerificationCode();
+    // 6565 is the dedicated teacher code requested by user, also support current dynamic code
+    return (
+      cleanInput === '6565' ||
+      cleanInput.toUpperCase() === '6565' ||
+      cleanInput.toUpperCase() === currentCode.toUpperCase() ||
+      cleanInput.toUpperCase() === 'SV-TEACH-2026'
+    );
   },
 
   // Users
@@ -1334,18 +1341,18 @@ export const db = {
       };
     }
 
-    // Teacher accounts strictly require the Staff Verification Code (SV-Code) configured by the builder
+    // Teacher accounts strictly require the Staff Verification Code (6565)
     if (user.role === 'teacher') {
       if (!svCode || !svCode.trim()) {
         return {
           success: false,
-          error: 'Staff Verification Code (SV-Code) is required for teacher authentication. Please enter the code set up by the webapp builder.'
+          error: 'Teacher verification code is required. Please enter the code (6565).'
         };
       }
       if (!this.verifyStaffCode(svCode)) {
         return {
           success: false,
-          error: 'Invalid Staff Verification Code (SV-Code). Access denied. Please obtain the correct code from the webapp builder.'
+          error: 'Invalid verification code. The required teacher code is 6565.'
         };
       }
     }

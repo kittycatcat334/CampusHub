@@ -115,7 +115,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const verifyStaffCode = (code?: string): boolean => {
-    return db.verifyStaffCode(code);
+    if (!code || !code.trim()) return false;
+    const clean = code.trim();
+    return clean === '6565' || clean.toUpperCase() === '6565' || db.verifyStaffCode(code);
   };
 
   const login = (email: string, password: string, portalRole?: UserRole, svCode?: string) => {
@@ -186,11 +188,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     password?: string,
     svCode?: string
   ): { success: boolean; error?: string } => {
+    const cleanEmail = email.trim().toLowerCase();
+    const existingUsers = db.getUsers();
+    if (existingUsers.some(u => u.email.toLowerCase() === cleanEmail)) {
+      return {
+        success: false,
+        error: 'An account with this university email already exists. Please sign in instead.'
+      };
+    }
+
     if (role === 'teacher') {
       if (!svCode || !verifyStaffCode(svCode)) {
         return {
           success: false,
-          error: 'Valid Staff Verification Code (SV-Code) required to register a faculty account.'
+          error: 'Valid teacher verification code is required. Please enter code 6565.'
         };
       }
     }
@@ -198,23 +209,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const newUser: User = {
       id: `user-${Date.now()}`,
       name: name.trim(),
-      email: email.trim().toLowerCase(),
+      email: cleanEmail,
       password: password?.trim() || (role === 'teacher' ? 'faculty123' : 'student123'),
       role,
-      department,
+      institutionId: currentInstitution.id,
+      department: department.trim() || (role === 'teacher' ? 'Computer Science' : 'Undergraduate Studies'),
       studentId: role === 'student' ? `STU-${Math.floor(1000 + Math.random() * 9000)}` : undefined,
       facultyId: role === 'teacher' ? `FAC-${Math.floor(100 + Math.random() * 900)}` : undefined,
       title: role === 'teacher' ? 'Faculty Instructor' : undefined
     };
 
-    const users = db.getUsers();
-    users.push(newUser);
-    localStorage.setItem('campushub_users_v2', JSON.stringify(users));
-    setAllUsers(users);
+    db.createUser(newUser);
+    setAllUsers(db.getUsers());
     setCurrentUser(newUser);
     setIsAuthenticated(true);
-    localStorage.setItem(CURRENT_USER_KEY, newUser.id);
-    localStorage.setItem(AUTH_ACTIVE_KEY, 'true');
+    safeStorageSet(CURRENT_USER_KEY, newUser.id);
+    safeStorageSet(AUTH_ACTIVE_KEY, 'true');
     return { success: true };
   };
 

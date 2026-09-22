@@ -12,10 +12,52 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+    <script>
+      // Single Page Application routing restoration for GitHub Pages
+      (function(l) {
+        if (l.search[1] === '/' ) {
+          var decoded = l.search.slice(1).split('&').map(function(s) { 
+            return s.replace(/~and~/g, '&');
+          }).join('?');
+          window.history.replaceState(null, null,
+            l.pathname.slice(0, -1) + decoded + l.hash
+          );
+        }
+      }(window.location));
+
+      // Trailing slash normalizer for GitHub Pages subfolder repositories
+      (function() {
+        var loc = window.location;
+        if (loc.hostname.endsWith('github.io') && !loc.pathname.endsWith('/') && !loc.pathname.slice(-5).includes('.')) {
+          window.location.replace(loc.pathname + '/' + loc.search + loc.hash);
+        }
+      })();
+    </script>
   </head>
-  <body class="bg-slate-50 text-slate-900 antialiased selection:bg-indigo-100 selection:text-indigo-900">
-    <div id="root"></div>
+  <body class="bg-slate-900 text-slate-100 antialiased selection:bg-indigo-500 selection:text-white">
+    <div id="root">
+      <!-- Branded instant loading state preventing white screens during initial load -->
+      <div id="gh-loading-fallback" style="min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;background-color:#0f172a;color:#f8fafc;font-family:'Plus Jakarta Sans',system-ui,sans-serif;padding:24px;text-align:center;">
+        <div style="width:52px;height:52px;border-radius:18px;background:linear-gradient(135deg,#4f46e5,#7c3aed);display:flex;align-items:center;justify-content:center;margin-bottom:18px;box-shadow:0 12px 28px -6px rgba(79,70,229,0.45);">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg>
+        </div>
+        <h1 style="font-size:22px;font-weight:800;letter-spacing:-0.02em;margin:0 0 8px 0;color:#ffffff;">CampusHub</h1>
+        <p style="font-size:13px;color:#94a3b8;max-width:340px;margin:0 0 20px 0;line-height:1.5;">Academic Management Platform for Students and Teachers</p>
+        <div style="width:28px;height:28px;border:3px solid rgba(255,255,255,0.12);border-top-color:#6366f1;border-radius:50%;animation:spin 0.8s linear infinite;"></div>
+        <style>@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }</style>
+      </div>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
+    <script>
+      // Fallback detector: If root is not mounted on GitHub Pages static host after 3s, forward to pre-compiled bundle in /docs/
+      setTimeout(function() {
+        var fallback = document.getElementById('gh-loading-fallback');
+        if (fallback && window.location.hostname.endsWith('github.io') && !window.location.pathname.includes('/docs/')) {
+          var target = window.location.pathname.replace(/\/+$/, '') + '/docs/' + window.location.search + window.location.hash;
+          window.location.replace(target);
+        }
+      }, 3000);
+    </script>
   </body>
 </html>
 
