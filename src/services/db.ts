@@ -1495,7 +1495,7 @@ export const db = {
   authenticateAdmin(code: string): { success: boolean; user?: User; error?: string } {
     const cleanCode = code.trim();
     if (cleanCode !== '63166565') {
-      return { success: false, error: 'Invalid administrator access code. Please enter the master code (63166565).' };
+      return { success: false, error: 'Invalid administrator access code. Access denied.' };
     }
     const users = this.getUsers();
     let adminUser = users.find(u => u.role === 'admin');
@@ -1533,14 +1533,14 @@ export const db = {
       if (!svCode || !svCode.trim()) {
         return {
           success: false,
-          error: 'Teacher verification code is required. Please enter code 6565.'
+          error: 'Teacher security access code is required.'
         };
       }
       const cleanSv = svCode.trim();
       if (cleanSv !== '6565' && !this.verifyStaffCode(cleanSv)) {
         return {
           success: false,
-          error: 'Invalid teacher verification code. Code 6565 is required for faculty login.'
+          error: 'Invalid teacher security code.'
         };
       }
     }
@@ -1559,7 +1559,7 @@ export const db = {
       const currentSV = this.getStaffVerificationCode();
       const validAdminPass = ['63166565', 'admin', 'admin123', 'admin2026', 'password123', currentSV];
       if (password !== (user.password || 'admin') && !validAdminPass.includes(password) && svCode !== '63166565') {
-        return { success: false, error: 'Incorrect administrator password or master code. Enter code 63166565.' };
+        return { success: false, error: 'Incorrect administrator password or access code.' };
       }
       return { success: true, user };
     }

@@ -130,7 +130,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       safeStorageSet(AUTH_ACTIVE_KEY, 'true');
       return { success: true };
     }
-    return { success: false, error: result.error || 'Invalid administrator access code. Enter code 63166565.' };
+    return { success: false, error: result.error || 'Invalid administrator access code.' };
   };
 
   const login = (email: string, password: string, portalRole?: UserRole, svCode?: string) => {
@@ -220,7 +220,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (!cleanCode || (cleanCode !== '6565' && !verifyStaffCode(cleanCode))) {
         return {
           success: false,
-          error: 'Valid teacher verification code is required. Please enter code 6565.'
+          error: 'Valid teacher verification code is required.'
         };
       }
     }

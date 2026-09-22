@@ -83,7 +83,7 @@ export const LoginScreen: React.FC = () => {
     if (activePortal === 'admin') {
       const codeToVerify = (adminCode || password || email).trim();
       if (!codeToVerify) {
-        setError('Please enter the administrator access code (63166565).');
+        setError('Please enter the administrator access code.');
         return;
       }
       setLoading(true);
@@ -91,7 +91,7 @@ export const LoginScreen: React.FC = () => {
         const res = loginAdminWithCode(codeToVerify);
         setLoading(false);
         if (!res.success) {
-          setError(res.error || 'Invalid administrator access code. Enter code 63166565.');
+          setError(res.error || 'Invalid administrator access code. Access denied.');
         }
       }, 300);
       return;
@@ -105,11 +105,11 @@ export const LoginScreen: React.FC = () => {
       }
       const cleanCode = teacherCode.trim();
       if (!cleanCode) {
-        setError('Teacher verification code is required. Please enter code 6565.');
+        setError('Teacher security access code is required.');
         return;
       }
       if (cleanCode !== '6565' && !verifyStaffCode(cleanCode)) {
-        setError('Invalid verification code. Teachers must enter code 6565 to sign in.');
+        setError('Invalid teacher security code.');
         return;
       }
       setLoading(true);
@@ -117,7 +117,7 @@ export const LoginScreen: React.FC = () => {
         const res = login(email.trim(), password, 'teacher', cleanCode);
         setLoading(false);
         if (!res.success) {
-          setError(res.error || 'Invalid faculty credentials. Please check your email, password, and code 6565.');
+          setError(res.error || 'Invalid faculty credentials. Please check your email, password, and security code.');
         }
       }, 300);
       return;
@@ -157,11 +157,11 @@ export const LoginScreen: React.FC = () => {
     if (activePortal === 'teacher') {
       const code = regTeacherCode.trim();
       if (!code) {
-        setError('Teacher verification code is required. Teachers must enter code 6565.');
+        setError('Teacher security access code is required.');
         return;
       }
       if (code !== '6565' && !verifyStaffCode(code)) {
-        setError('Invalid teacher code. Teachers must enter code 6565 to create an account.');
+        setError('Invalid teacher security code.');
         return;
       }
     }
@@ -418,13 +418,13 @@ export const LoginScreen: React.FC = () => {
                   ? `Enter the 6-digit verification code sent to ${regEmail}`
                   : isRegistering
                   ? activePortal === 'teacher'
-                    ? 'Faculty registration requires email, password, and code 6565'
+                    ? 'Faculty registration requires email, password, and security code'
                     : 'Register with your student details and verify your email'
                   : activePortal === 'student'
                   ? 'Access your enrolled courses, daily schedule, and assignments'
                   : activePortal === 'teacher'
-                  ? 'Requires email, password, and verification code 6565'
-                  : 'Access full administrative controls with code 63166565'}
+                  ? 'Requires academic email, password, and faculty security code'
+                  : 'Enter your confidential administrator access code'}
               </p>
             </div>
 
@@ -523,7 +523,7 @@ export const LoginScreen: React.FC = () => {
                         <span>Master Administrator Authentication</span>
                       </div>
                       <p className="text-[11px] text-slate-300">
-                        Enter master access code <strong className="text-rose-300">63166565</strong> to authenticate as Administrator.
+                        Enter your confidential master administrator access code to authenticate.
                       </p>
                     </div>
 
@@ -539,7 +539,7 @@ export const LoginScreen: React.FC = () => {
                           required
                           value={adminCode}
                           onChange={(e) => setAdminCode(e.target.value)}
-                          placeholder="Enter code 63166565"
+                          placeholder="Enter confidential administrator code"
                           className="w-full text-xs pl-10 pr-4 py-2.5 rounded-xl bg-slate-900/80 border border-rose-500/40 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-rose-500/40 focus:border-rose-500 transition-all font-mono"
                         />
                       </div>
@@ -612,22 +612,22 @@ export const LoginScreen: React.FC = () => {
                       <div className="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/30 space-y-2">
                         <label className="text-xs font-bold text-amber-300 flex items-center gap-1.5">
                           <ShieldCheck className="w-4 h-4 text-amber-400 shrink-0" />
-                          <span>Teacher Verification Code (Code: 6565) *</span>
+                          <span>Teacher Security Code *</span>
                         </label>
                         <div className="relative">
                           <KeyRound className="w-4 h-4 text-amber-400/80 absolute left-3 top-1/2 -translate-y-1/2" />
                           <input
                             id="input-login-svcode"
-                            type="text"
+                            type="password"
                             required
                             value={teacherCode}
                             onChange={(e) => setTeacherCode(e.target.value.trim())}
-                            placeholder="Enter code 6565"
+                            placeholder="Enter teacher security code"
                             className="w-full text-xs font-mono font-bold tracking-wider pl-9 pr-4 py-2 rounded-xl bg-slate-900 border border-amber-500/40 text-amber-200 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-amber-500/40 focus:border-amber-400 transition-all"
                           />
                         </div>
                         <p className="text-[10px] text-slate-400">
-                          Faculty accounts require email, password, and code <strong className="text-amber-300">6565</strong>.
+                          Faculty accounts require your confidential teacher security code.
                         </p>
                       </div>
                     )}
@@ -664,7 +664,7 @@ export const LoginScreen: React.FC = () => {
                 {activePortal === 'teacher' && (
                   <div className="p-3 bg-purple-500/10 border border-purple-500/30 rounded-xl text-xs text-purple-200 mb-2 flex items-center gap-2">
                     <KeyRound className="w-4 h-4 text-amber-400 shrink-0" />
-                    <span>Faculty registration requires teacher verification code <strong>6565</strong>.</span>
+                    <span>Faculty registration requires an authorized teacher security code.</span>
                   </div>
                 )}
 
@@ -720,17 +720,17 @@ export const LoginScreen: React.FC = () => {
                   <div className="p-3 bg-amber-500/10 border border-amber-500/40 rounded-xl space-y-1.5 animate-in fade-in duration-200">
                     <label className="text-[11px] font-bold text-amber-300 flex items-center gap-1.5">
                       <ShieldCheck className="w-3.5 h-3.5 text-amber-400" />
-                      <span>Teacher Verification Code (Code: 6565) *</span>
+                      <span>Teacher Security Code *</span>
                     </label>
                     <input
-                      type="text"
+                      type="password"
                       required
                       value={regTeacherCode}
                       onChange={(e) => setRegTeacherCode(e.target.value.trim())}
-                      placeholder="Enter code 6565"
+                      placeholder="Enter teacher security code"
                       className="w-full text-xs font-mono font-bold tracking-wider px-3 py-2 rounded-lg bg-slate-900 border border-amber-500/40 text-amber-200 placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-amber-400"
                     />
-                    <p className="text-[10px] text-slate-300">Teachers must enter <strong>6565</strong> to register as faculty.</p>
+                    <p className="text-[10px] text-slate-300">Authorized faculty security code required to register.</p>
                   </div>
                 )}
 
