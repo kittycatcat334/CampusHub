@@ -10,7 +10,9 @@ import {
   AcademicWorkItem,
   DailyClassScheduleItem,
   Classroom,
-  Institution
+  Institution,
+  PersonalScheduleItem,
+  AcademicNote
 } from '../types';
 
 // Pre-seeded Multi-Tenant Universities / Institutions
@@ -969,6 +971,157 @@ const DEFAULT_RESOURCES: ClassResource[] = [
   }
 ];
 
+export const DEFAULT_PERSONAL_SCHEDULE: PersonalScheduleItem[] = [
+  // Student Alex Rivera schedule items
+  {
+    id: 'sched-item-1',
+    userId: 'student-1',
+    userRole: 'student',
+    title: 'CS201 Algorithm Study Group',
+    category: 'study-session',
+    dayOfWeek: 'Thursday',
+    startTime: '04:00 PM',
+    endTime: '05:30 PM',
+    location: 'Turing Library 2nd Floor Group Room 4',
+    courseCode: 'CS201',
+    courseName: 'Data Structures & Algorithm Analysis',
+    description: 'Review binary search tree rebalancing and amortized bounds with classmates.',
+    completed: false,
+    color: 'indigo',
+    createdAt: '2026-09-15T10:00:00Z'
+  },
+  {
+    id: 'sched-item-2',
+    userId: 'student-1',
+    userRole: 'student',
+    title: 'Dr. Chen CS340 Office Hours Consultation',
+    category: 'office-hours',
+    dayOfWeek: 'Monday',
+    startTime: '03:30 PM',
+    endTime: '04:30 PM',
+    location: 'Hopper Hall 312',
+    courseCode: 'CS340',
+    courseName: 'Database Management Systems',
+    description: 'Ask questions on B-Tree indexing and query planner execution paths.',
+    completed: false,
+    color: 'amber',
+    createdAt: '2026-09-14T09:00:00Z'
+  },
+  {
+    id: 'sched-item-3',
+    userId: 'student-1',
+    userRole: 'student',
+    title: 'Physics II Lab Report Drafting',
+    category: 'lab',
+    dayOfWeek: 'Friday',
+    startTime: '02:00 PM',
+    endTime: '03:30 PM',
+    location: 'Science Library Quiet Commons',
+    courseCode: 'PHYS210',
+    courseName: 'University Physics II',
+    description: 'Plot electric field lines and calculate percent error for Equipotential Mapping lab.',
+    completed: false,
+    color: 'sky',
+    createdAt: '2026-09-16T11:00:00Z'
+  },
+  // Teacher Dr. Robert Chen schedule items
+  {
+    id: 'sched-teach-1',
+    userId: 'teacher-1',
+    userRole: 'teacher',
+    title: 'Open Faculty Office Hours (Drop-In)',
+    category: 'office-hours',
+    dayOfWeek: 'Monday',
+    startTime: '03:30 PM',
+    endTime: '05:00 PM',
+    location: 'Hopper Hall 312 & Virtual Room',
+    courseCode: 'CS201 / CS340',
+    courseName: 'Faculty Student Advising',
+    description: 'Open consultation for course material questions, lab feedback, and student projects.',
+    completed: false,
+    color: 'purple',
+    createdAt: '2026-09-01T08:00:00Z'
+  },
+  {
+    id: 'sched-teach-2',
+    userId: 'teacher-1',
+    userRole: 'teacher',
+    title: 'Midterm 1 Extra Problem Solving Review',
+    category: 'review',
+    dayOfWeek: 'Thursday',
+    startTime: '04:00 PM',
+    endTime: '05:30 PM',
+    location: 'Turing Hall 304',
+    courseCode: 'CS201',
+    courseName: 'Data Structures & Algorithm Analysis',
+    description: 'Walkthrough of past exam problems on red-black trees and graph search algorithms.',
+    completed: false,
+    color: 'emerald',
+    createdAt: '2026-09-12T14:00:00Z'
+  },
+  {
+    id: 'sched-teach-3',
+    userId: 'teacher-1',
+    userRole: 'teacher',
+    title: 'Computer Science Department Faculty Meeting',
+    category: 'personal',
+    dayOfWeek: 'Wednesday',
+    startTime: '11:30 AM',
+    endTime: '01:00 PM',
+    location: 'Dean Conference Room 401',
+    courseCode: 'CS-DEPT',
+    courseName: 'Academic Governance',
+    description: 'Quarterly review of ABET accreditation and undergraduate lab infrastructure.',
+    completed: true,
+    color: 'rose',
+    createdAt: '2026-09-05T10:00:00Z'
+  }
+];
+
+export const DEFAULT_ACADEMIC_NOTES: AcademicNote[] = [
+  // Student Alex Rivera Notes
+  {
+    id: 'note-1',
+    userId: 'student-1',
+    userRole: 'student',
+    title: 'Red-Black Tree Invariant Cheat Sheet',
+    content: '1. Every node is either red or black.\n2. The root is always black.\n3. Every leaf (NIL) is black.\n4. If a node is red, both children are black (no consecutive reds).\n5. For each node, all paths to descendant leaves contain the same number of black nodes.',
+    category: 'lecture',
+    courseCode: 'CS201',
+    tags: ['Algorithms', 'Exam Prep', 'Trees'],
+    pinned: true,
+    updatedAt: '2026-09-16T14:30:00Z',
+    createdAt: '2026-09-16T14:00:00Z'
+  },
+  {
+    id: 'note-2',
+    userId: 'student-1',
+    userRole: 'student',
+    title: 'PostgreSQL Index Tuning Checklist',
+    content: '- Use EXPLAIN (ANALYZE, BUFFERS) to inspect query execution plan.\n- B-Trees are ideal for range and equality predicates (<, <=, =, >=, >).\n- GIN indexes for JSONB search and array overlap.\n- Ensure composite index column ordering matches WHERE condition prefixes.',
+    category: 'study-plan',
+    courseCode: 'CS340',
+    tags: ['Database', 'SQL', 'Optimization'],
+    pinned: false,
+    updatedAt: '2026-09-15T18:00:00Z',
+    createdAt: '2026-09-15T18:00:00Z'
+  },
+  // Teacher Dr. Robert Chen Notes
+  {
+    id: 'note-teach-1',
+    userId: 'teacher-1',
+    userRole: 'teacher',
+    title: 'Fall 2026 Midterm Exam 1 Topics & Question Ideas',
+    content: 'Core exam coverage:\n- Dynamic arrays amortized push_back proof using potential method.\n- Heap construction in O(n) linear time.\n- Dijkstra vs Bellman-Ford comparisons for negative edge graphs.',
+    category: 'lecture',
+    courseCode: 'CS201',
+    tags: ['Midterm', 'Exam Drafting', 'CS201'],
+    pinned: true,
+    updatedAt: '2026-09-16T10:00:00Z',
+    createdAt: '2026-09-16T09:30:00Z'
+  }
+];
+
 // Storage Keys - bumped to v2 for clean data hydration
 const KEYS = {
   INSTITUTIONS: 'campushub_institutions_v1',
@@ -981,7 +1134,9 @@ const KEYS = {
   RESOURCES: 'campushub_resources_v2',
   ENROLLMENTS: 'campushub_enrollments_v2',
   USERS: 'campushub_users_v2',
-  SV_CODE: 'campushub_sv_code_v1'
+  SV_CODE: 'campushub_sv_code_v1',
+  PERSONAL_SCHEDULE: 'campushub_personal_schedule_v2',
+  ACADEMIC_NOTES: 'campushub_academic_notes_v2'
 };
 
 // Default Staff Verification Code configured for teacher authorization
@@ -1131,6 +1286,13 @@ export function initDatabase(): void {
     if (!safeStorageGet(KEYS.SV_CODE)) {
       safeStorageSet(KEYS.SV_CODE, DEFAULT_SV_CODE);
     }
+    // Initialize Personal Schedule and Academic Notes
+    if (!safeStorageGet(KEYS.PERSONAL_SCHEDULE)) {
+      safeStorageSet(KEYS.PERSONAL_SCHEDULE, JSON.stringify(DEFAULT_PERSONAL_SCHEDULE));
+    }
+    if (!safeStorageGet(KEYS.ACADEMIC_NOTES)) {
+      safeStorageSet(KEYS.ACADEMIC_NOTES, JSON.stringify(DEFAULT_ACADEMIC_NOTES));
+    }
   } catch (err) {
     console.warn('initDatabase encountered error, falling back gracefully:', err);
   }
@@ -1151,6 +1313,8 @@ export const db = {
     safeStorageSet(KEYS.ENROLLMENTS, JSON.stringify(DEFAULT_ENROLLMENTS));
     safeStorageSet(KEYS.USERS, JSON.stringify(DEFAULT_USERS));
     safeStorageSet(KEYS.SV_CODE, DEFAULT_SV_CODE);
+    safeStorageSet(KEYS.PERSONAL_SCHEDULE, JSON.stringify(DEFAULT_PERSONAL_SCHEDULE));
+    safeStorageSet(KEYS.ACADEMIC_NOTES, JSON.stringify(DEFAULT_ACADEMIC_NOTES));
     notifyDBChange();
   },
 
@@ -1602,6 +1766,21 @@ export const db = {
     }
 
     return { success: true, message: `Successfully joined ${foundClass.code} - ${foundClass.name}!`, class: foundClass };
+  },
+
+  unenrollStudent(studentId: string, classId: string): boolean {
+    const enrollments = loadStorage<Enrollment[]>(KEYS.ENROLLMENTS, DEFAULT_ENROLLMENTS);
+    const filtered = enrollments.filter(e => !(e.classId === classId && e.studentId === studentId));
+    saveStorage(KEYS.ENROLLMENTS, filtered);
+
+    // Update count in class
+    const allCls = this.getClasses();
+    const idx = allCls.findIndex(c => c.id === classId);
+    if (idx !== -1 && (allCls[idx].enrolledStudentCount || 0) > 0) {
+      allCls[idx].enrolledStudentCount = (allCls[idx].enrolledStudentCount || 1) - 1;
+      saveStorage(KEYS.CLASSES, allCls);
+    }
+    return true;
   },
 
   // Assignments
@@ -2090,6 +2269,149 @@ export const db = {
       text: `Due in ${diffDays} days`,
       urgency: 'upcoming' as const,
       badgeColor: 'bg-slate-100 text-slate-700 border-slate-200'
+    };
+  },
+
+  // Personal Schedule Management (Students & Teachers)
+  getPersonalSchedule(userId: string): PersonalScheduleItem[] {
+    const all = loadStorage<PersonalScheduleItem[]>(KEYS.PERSONAL_SCHEDULE, DEFAULT_PERSONAL_SCHEDULE);
+    return all.filter(s => s.userId === userId);
+  },
+
+  getPersonalScheduleByDay(userId: string, dayOfWeek: string): PersonalScheduleItem[] {
+    const all = this.getPersonalSchedule(userId);
+    const dayNorm = dayOfWeek.trim().toLowerCase();
+    return all
+      .filter(s => s.dayOfWeek.toLowerCase() === dayNorm)
+      .sort((a, b) => a.startTime.localeCompare(b.startTime));
+  },
+
+  createPersonalScheduleItem(data: Omit<PersonalScheduleItem, 'id' | 'createdAt'>): PersonalScheduleItem {
+    const all = loadStorage<PersonalScheduleItem[]>(KEYS.PERSONAL_SCHEDULE, DEFAULT_PERSONAL_SCHEDULE);
+    const newItem: PersonalScheduleItem = {
+      ...data,
+      id: `sched-item-${Date.now()}`,
+      createdAt: new Date().toISOString()
+    };
+    all.push(newItem);
+    saveStorage(KEYS.PERSONAL_SCHEDULE, all);
+    return newItem;
+  },
+
+  updatePersonalScheduleItem(id: string, updates: Partial<PersonalScheduleItem>): PersonalScheduleItem {
+    const all = loadStorage<PersonalScheduleItem[]>(KEYS.PERSONAL_SCHEDULE, DEFAULT_PERSONAL_SCHEDULE);
+    const idx = all.findIndex(s => s.id === id);
+    if (idx === -1) throw new Error('Schedule item not found');
+    const updated = { ...all[idx], ...updates };
+    all[idx] = updated;
+    saveStorage(KEYS.PERSONAL_SCHEDULE, all);
+    return updated;
+  },
+
+  deletePersonalScheduleItem(id: string): boolean {
+    const all = loadStorage<PersonalScheduleItem[]>(KEYS.PERSONAL_SCHEDULE, DEFAULT_PERSONAL_SCHEDULE);
+    const filtered = all.filter(s => s.id !== id);
+    saveStorage(KEYS.PERSONAL_SCHEDULE, filtered);
+    return true;
+  },
+
+  togglePersonalScheduleItemComplete(id: string): PersonalScheduleItem {
+    const all = loadStorage<PersonalScheduleItem[]>(KEYS.PERSONAL_SCHEDULE, DEFAULT_PERSONAL_SCHEDULE);
+    const idx = all.findIndex(s => s.id === id);
+    if (idx === -1) throw new Error('Schedule item not found');
+    all[idx].completed = !all[idx].completed;
+    saveStorage(KEYS.PERSONAL_SCHEDULE, all);
+    return all[idx];
+  },
+
+  // Academic Notes & Student/Faculty Personal Academic Data
+  getAcademicNotes(userId: string): AcademicNote[] {
+    const all = loadStorage<AcademicNote[]>(KEYS.ACADEMIC_NOTES, DEFAULT_ACADEMIC_NOTES);
+    return all
+      .filter(n => n.userId === userId)
+      .sort((a, b) => {
+        if (a.pinned && !b.pinned) return -1;
+        if (!a.pinned && b.pinned) return 1;
+        return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
+      });
+  },
+
+  createAcademicNote(data: Omit<AcademicNote, 'id' | 'createdAt' | 'updatedAt'>): AcademicNote {
+    const all = loadStorage<AcademicNote[]>(KEYS.ACADEMIC_NOTES, DEFAULT_ACADEMIC_NOTES);
+    const now = new Date().toISOString();
+    const newNote: AcademicNote = {
+      ...data,
+      id: `note-${Date.now()}`,
+      createdAt: now,
+      updatedAt: now
+    };
+    all.unshift(newNote);
+    saveStorage(KEYS.ACADEMIC_NOTES, all);
+    return newNote;
+  },
+
+  updateAcademicNote(id: string, updates: Partial<AcademicNote>): AcademicNote {
+    const all = loadStorage<AcademicNote[]>(KEYS.ACADEMIC_NOTES, DEFAULT_ACADEMIC_NOTES);
+    const idx = all.findIndex(n => n.id === id);
+    if (idx === -1) throw new Error('Academic note not found');
+    const updated = {
+      ...all[idx],
+      ...updates,
+      updatedAt: new Date().toISOString()
+    };
+    all[idx] = updated;
+    saveStorage(KEYS.ACADEMIC_NOTES, all);
+    return updated;
+  },
+
+  deleteAcademicNote(id: string): boolean {
+    const all = loadStorage<AcademicNote[]>(KEYS.ACADEMIC_NOTES, DEFAULT_ACADEMIC_NOTES);
+    const filtered = all.filter(n => n.id !== id);
+    saveStorage(KEYS.ACADEMIC_NOTES, filtered);
+    return true;
+  },
+
+  // Teacher Schedule & Teaching Load Management
+  getTeacherDailySchedule(teacherId: string, dayOfWeek: string) {
+    const teacherClasses = this.getTeacherClasses(teacherId);
+    const dayNorm = dayOfWeek.toLowerCase();
+    const lectures: DailyClassScheduleItem[] = [];
+
+    teacherClasses.forEach(cls => {
+      const scheduleLower = cls.schedule.toLowerCase();
+      let dayMatches = false;
+
+      if (dayNorm.startsWith('mon') && (scheduleLower.includes('mon') || scheduleLower.includes('m/w'))) dayMatches = true;
+      else if (dayNorm.startsWith('tue') && (scheduleLower.includes('tue') || scheduleLower.includes('t/th'))) dayMatches = true;
+      else if (dayNorm.startsWith('wed') && (scheduleLower.includes('wed') || scheduleLower.includes('m/w'))) dayMatches = true;
+      else if (dayNorm.startsWith('thu') && (scheduleLower.includes('thu') || scheduleLower.includes('t/th'))) dayMatches = true;
+      else if (dayNorm.startsWith('fri') && scheduleLower.includes('fri')) dayMatches = true;
+
+      if (dayMatches) {
+        const timeMatch = cls.schedule.match(/(\d{1,2}:\d{2}\s*(?:AM|PM|am|pm))\s*-\s*(\d{1,2}:\d{2}\s*(?:AM|PM|am|pm))/i);
+        const startTime = timeMatch ? timeMatch[1].toUpperCase() : '10:00 AM';
+        const endTime = timeMatch ? timeMatch[2].toUpperCase() : '11:30 AM';
+
+        lectures.push({
+          id: `teach-sched-${cls.id}-${dayOfWeek}`,
+          course: cls,
+          dayOfWeek: (dayOfWeek.charAt(0).toUpperCase() + dayOfWeek.slice(1).toLowerCase()) as any,
+          startTime,
+          endTime,
+          room: cls.room,
+          instructorName: cls.teacherName,
+          instructorEmail: cls.teacherEmail,
+          status: 'upcoming'
+        });
+      }
+    });
+
+    const personalBlocks = this.getPersonalScheduleByDay(teacherId, dayOfWeek);
+
+    return {
+      lectures: lectures.sort((a, b) => a.startTime.localeCompare(b.startTime)),
+      personalBlocks,
+      totalCommitments: lectures.length + personalBlocks.length
     };
   }
 };

@@ -131,6 +131,41 @@ export interface DailyClassScheduleItem {
   instructorName: string;
   instructorEmail: string;
   status: 'completed' | 'in-progress' | 'upcoming';
+  isCustom?: boolean;
+}
+
+export interface PersonalScheduleItem {
+  id: string;
+  userId: string;
+  userRole: 'student' | 'teacher';
+  title: string;
+  category: 'lecture' | 'office-hours' | 'study-session' | 'lab' | 'review' | 'exam' | 'personal';
+  dayOfWeek: 'Monday' | 'Tuesday' | 'Wednesday' | 'Thursday' | 'Friday' | 'Saturday' | 'Sunday';
+  startTime: string; // e.g. "10:00 AM"
+  endTime: string; // e.g. "11:30 AM"
+  location?: string;
+  courseId?: string;
+  courseCode?: string;
+  courseName?: string;
+  description?: string;
+  completed?: boolean;
+  color?: string; // 'indigo' | 'emerald' | 'purple' | 'amber' | 'rose' | 'sky'
+  createdAt: string;
+}
+
+export interface AcademicNote {
+  id: string;
+  userId: string;
+  userRole: 'student' | 'teacher';
+  title: string;
+  content: string;
+  category?: 'general' | 'lecture' | 'study-plan' | 'exam-prep' | 'faculty-meeting' | 'research';
+  courseId?: string;
+  courseCode?: string;
+  tags?: string[];
+  pinned?: boolean;
+  updatedAt: string;
+  createdAt: string;
 }
 
 export interface Submission {

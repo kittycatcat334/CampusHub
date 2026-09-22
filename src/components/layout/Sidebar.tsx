@@ -96,6 +96,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
       badgeColor: 'bg-purple-100 dark:bg-purple-950/70 text-purple-800 dark:text-purple-300'
     },
     {
+      id: 'schedule',
+      label: 'Teaching Schedule',
+      icon: Clock,
+      badge: 'Live',
+      badgeColor: 'bg-emerald-100 dark:bg-emerald-950/70 text-emerald-800 dark:text-emerald-300'
+    },
+    {
       id: 'classes',
       label: 'Manage Classes',
       icon: BookOpen

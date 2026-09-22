@@ -25,6 +25,7 @@ import { JoinClassModal } from './components/student/JoinClassModal';
 // Teacher Views
 import { TeacherDashboard } from './components/teacher/TeacherDashboard';
 import { TeacherClasses } from './components/teacher/TeacherClasses';
+import { TeacherSchedule } from './components/teacher/TeacherSchedule';
 import { TeacherAssignments } from './components/teacher/TeacherAssignments';
 import { TeacherAnnouncements } from './components/teacher/TeacherAnnouncements';
 import { CreateClassModal } from './components/teacher/CreateClassModal';
@@ -287,6 +288,10 @@ function MainContent() {
                   selectedCourseId={selectedCourseId}
                   onSelectCourse={setSelectedCourseId}
                 />
+              )}
+
+              {currentTab === 'schedule' && (
+                <TeacherSchedule onNavigate={setCurrentTab} />
               )}
 
               {currentTab === 'classes' && (

@@ -141,6 +141,13 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
               <span>Create Assignment</span>
             </button>
             <button
+              onClick={() => onNavigate('schedule')}
+              className="inline-flex items-center gap-1.5 bg-purple-700/60 hover:bg-purple-700 text-white font-semibold text-xs px-3 py-2.5 rounded-xl border border-purple-400/40 transition-all"
+            >
+              <Clock className="w-4 h-4" />
+              <span>Teaching Schedule</span>
+            </button>
+            <button
               onClick={onOpenCreateClass}
               className="inline-flex items-center gap-1.5 bg-purple-700/60 hover:bg-purple-700 text-white font-semibold text-xs px-3 py-2.5 rounded-xl border border-purple-400/40 transition-all"
             >

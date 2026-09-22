@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
-import { db } from '../../services/db';
+import { db, subscribeToDB } from '../../services/db';
 import { UniversityClass, Assignment } from '../../types';
 import {
   BookOpen,
@@ -22,7 +22,8 @@ import {
   ExternalLink,
   ChevronRight,
   TrendingUp,
-  Mail
+  Mail,
+  UserMinus
 } from 'lucide-react';
 
 interface StudentClassesProps {
@@ -41,13 +42,30 @@ export const StudentClasses: React.FC<StudentClassesProps> = ({
   onNavigate
 }) => {
   const { currentUser } = useAuth();
-  const enrolledClasses = db.getStudentClasses(currentUser.id);
-  const realTimeStatus = db.getStudentRealTimeClassStatus(currentUser.id);
+  const [, setTick] = useState(0);
+
+  useEffect(() => {
+    return subscribeToDB(() => setTick(t => t + 1));
+  }, []);
 
   // Active class drill-down modal
   const [activeClass, setActiveClass] = useState<UniversityClass | null>(null);
   const [activeClassTab, setActiveClassTab] = useState<'stream' | 'assignments' | 'resources'>('stream');
   const [filterTodayOnly, setFilterTodayOnly] = useState(false);
+  const [unenrollConfirmId, setUnenrollConfirmId] = useState<string | null>(null);
+
+  if (!currentUser) return null;
+
+  const enrolledClasses = db.getStudentClasses(currentUser.id);
+  const realTimeStatus = db.getStudentRealTimeClassStatus(currentUser.id);
+
+  const handleUnenroll = (classId: string) => {
+    db.unenrollStudent(currentUser.id, classId);
+    setUnenrollConfirmId(null);
+    if (activeClass?.id === classId) {
+      setActiveClass(null);
+    }
+  };
 
   // Data for active class
   const classAssignments = activeClass ? db.getAssignments(activeClass.id) : [];
@@ -58,7 +76,7 @@ export const StudentClasses: React.FC<StudentClassesProps> = ({
   const displayedClasses = enrolledClasses.filter(c => {
     if (selectedCourseId && c.id !== selectedCourseId) return false;
     if (filterTodayOnly) {
-      const perClassInfo = realTimeStatus.perClass.find(p => p.course.id === c.id);
+      const perClassInfo = realTimeStatus?.perClass.find(p => p.course.id === c.id);
       return perClassInfo?.meetsToday;
     }
     return true;
@@ -377,7 +395,7 @@ export const StudentClasses: React.FC<StudentClassesProps> = ({
                   )}
 
                   {/* Action Buttons */}
-                  <div className="pt-2 flex items-center gap-2 border-t border-slate-100">
+                  <div className="pt-2 flex items-center gap-2 border-t border-slate-100 relative">
                     <button
                       onClick={() => {
                         setActiveClass(cls);
@@ -396,6 +414,36 @@ export const StudentClasses: React.FC<StudentClassesProps> = ({
                       >
                         <Clock className="w-4 h-4" />
                       </button>
+                    )}
+                    <button
+                      onClick={() => setUnenrollConfirmId(cls.id)}
+                      title="Drop / Unenroll course"
+                      className="p-2 rounded-xl border border-slate-200 text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors"
+                    >
+                      <UserMinus className="w-4 h-4" />
+                    </button>
+
+                    {/* Unenroll confirmation overlay */}
+                    {unenrollConfirmId === cls.id && (
+                      <div className="absolute inset-0 -top-8 bg-white/95 rounded-xl border border-rose-200 p-2 z-20 flex flex-col justify-center items-center text-center shadow-lg">
+                        <p className="text-[11px] font-bold text-slate-800 mb-1.5">
+                          Drop {cls.code}?
+                        </p>
+                        <div className="flex items-center gap-1.5">
+                          <button
+                            onClick={() => handleUnenroll(cls.id)}
+                            className="px-2.5 py-1 bg-rose-600 hover:bg-rose-700 text-white rounded text-[10px] font-bold"
+                          >
+                            Yes, Drop
+                          </button>
+                          <button
+                            onClick={() => setUnenrollConfirmId(null)}
+                            className="px-2.5 py-1 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded text-[10px] font-bold"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
                     )}
                   </div>
                 </div>
