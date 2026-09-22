@@ -1328,11 +1328,34 @@ export const db = {
     return this.getUsers().find(u => u.email.toLowerCase() === email.trim().toLowerCase());
   },
 
+  authenticateAdmin(code: string): { success: boolean; user?: User; error?: string } {
+    const cleanCode = code.trim();
+    if (cleanCode !== '63166565') {
+      return { success: false, error: 'Invalid administrator access code. Please enter the master code (63166565).' };
+    }
+    const users = this.getUsers();
+    let adminUser = users.find(u => u.role === 'admin');
+    if (!adminUser) {
+      adminUser = {
+        id: 'admin-master',
+        name: 'System Administrator',
+        email: 'admin@campushub.edu',
+        role: 'admin',
+        title: 'Master Administrator',
+        department: 'Information Technology & Campus Administration',
+        institutionId: this.getCurrentInstitution().id,
+        emailVerified: true
+      };
+      this.createUser(adminUser);
+    }
+    return { success: true, user: adminUser };
+  },
+
   authenticateUser(email: string, password: string, requiredRole?: UserRole, svCode?: string): { success: boolean; user?: User; error?: string } {
     const cleanEmail = email.trim().toLowerCase();
     const user = this.getUserByEmail(cleanEmail);
     if (!user) {
-      return { success: false, error: 'No account found with this university email.' };
+      return { success: false, error: 'No account found with this university email address.' };
     }
     if (requiredRole && user.role !== requiredRole) {
       return {
@@ -1341,18 +1364,19 @@ export const db = {
       };
     }
 
-    // Teacher accounts strictly require the Staff Verification Code (6565)
+    // Teacher accounts strictly require the Faculty Verification Code (6565)
     if (user.role === 'teacher') {
       if (!svCode || !svCode.trim()) {
         return {
           success: false,
-          error: 'Teacher verification code is required. Please enter the code (6565).'
+          error: 'Teacher verification code is required. Please enter code 6565.'
         };
       }
-      if (!this.verifyStaffCode(svCode)) {
+      const cleanSv = svCode.trim();
+      if (cleanSv !== '6565' && !this.verifyStaffCode(cleanSv)) {
         return {
           success: false,
-          error: 'Invalid verification code. The required teacher code is 6565.'
+          error: 'Invalid teacher verification code. Code 6565 is required for faculty login.'
         };
       }
     }
@@ -1361,17 +1385,17 @@ export const db = {
     if (user.role === 'principal') {
       const validPrincipalPass = [user.password || 'principal123', 'principal', 'admin', 'password123'];
       if (!validPrincipalPass.includes(password)) {
-        return { success: false, error: 'Incorrect principal password. (Tip: Demo pass is "principal123")' };
+        return { success: false, error: 'Incorrect principal password.' };
       }
       return { success: true, user };
     }
 
-    // Administrator authentication
+    // Administrator authentication: accepts admin code 63166565 or standard password
     if (user.role === 'admin') {
       const currentSV = this.getStaffVerificationCode();
-      const validAdminPass = ['admin', 'admin123', 'admin2026', 'password123', currentSV];
-      if (password !== (user.password || 'admin') && !validAdminPass.includes(password)) {
-        return { success: false, error: 'Incorrect administrator password or master key. (Tip: Demo pass is "admin" or builder SV-Code)' };
+      const validAdminPass = ['63166565', 'admin', 'admin123', 'admin2026', 'password123', currentSV];
+      if (password !== (user.password || 'admin') && !validAdminPass.includes(password) && svCode !== '63166565') {
+        return { success: false, error: 'Incorrect administrator password or master code. Enter code 63166565.' };
       }
       return { success: true, user };
     }
@@ -1379,7 +1403,7 @@ export const db = {
     // Check password if set on user, or match default demo passwords
     const validPassword = user.password || (user.role === 'teacher' ? 'faculty123' : 'student123');
     if (password !== validPassword && password !== 'password123' && password !== 'admin123' && password !== 'principal123') {
-      return { success: false, error: 'Incorrect password. (Tip: Demo password is "student123" for students and "faculty123" for faculty)' };
+      return { success: false, error: 'Incorrect password. Please verify your credentials and try again.' };
     }
     return { success: true, user };
   },

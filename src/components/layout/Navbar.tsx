@@ -198,42 +198,6 @@ export const Navbar: React.FC<NavbarProps> = ({
             )}
           </div>
 
-          {/* Quick Role Toggle Pill (Demo) */}
-          <div className="hidden lg:inline-flex items-center bg-slate-100 dark:bg-slate-800 p-1 rounded-xl border border-slate-200 dark:border-slate-700">
-            <button
-              onClick={() => switchRole('student')}
-              className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 ${
-                isStudent
-                  ? 'bg-white dark:bg-slate-700 text-indigo-700 dark:text-indigo-300 shadow-xs'
-                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-              }`}
-            >
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-              Student View
-            </button>
-            <button
-              onClick={() => switchRole('teacher')}
-              className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 ${
-                isTeacher
-                  ? 'bg-white dark:bg-slate-700 text-purple-700 dark:text-purple-300 shadow-xs'
-                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-              }`}
-            >
-              <span className="w-1.5 h-1.5 rounded-full bg-purple-500" />
-              Teacher View
-            </button>
-            <button
-              onClick={() => switchRole('admin')}
-              className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 ${
-                isAdmin
-                  ? 'bg-white dark:bg-slate-700 text-rose-700 dark:text-rose-300 shadow-xs'
-                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-              }`}
-            >
-              <span className="w-1.5 h-1.5 rounded-full bg-rose-500" />
-              Admin View
-            </button>
-          </div>
         </div>
 
         {/* Right side controls */}
@@ -241,8 +205,8 @@ export const Navbar: React.FC<NavbarProps> = ({
           {/* SCREEN LIGHT/DARK MODE TOGGLE */}
           <ThemeToggle variant="icon" />
 
-          {/* SEPARATE CLASSROOM SETUP WINDOW BUTTON */}
-          {onOpenClassrooms && (
+          {/* SEPARATE CLASSROOM SETUP WINDOW BUTTON - ADMIN ONLY */}
+          {isAdmin && onOpenClassrooms && (
             <button
               id="btn-navbar-setup-classrooms"
               onClick={onOpenClassrooms}
@@ -254,19 +218,21 @@ export const Navbar: React.FC<NavbarProps> = ({
             </button>
           )}
 
-          {/* MULTI-CAMPUS / INSTITUTIONS BUTTON */}
-          <button
-            id="btn-navbar-institutions"
-            onClick={() => setIsInstitutionsModalOpen(true)}
-            className="inline-flex items-center gap-1.5 bg-emerald-50 dark:bg-emerald-950/50 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800 text-xs font-bold px-3 py-2 rounded-xl transition-all shadow-2xs"
-            title="Manage and switch between client universities or provision new ones"
-          >
-            <Building2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-            <span className="hidden lg:inline">{currentInstitution.shortName}</span>
-            <span className="lg:hidden">{currentInstitution.code}</span>
-          </button>
+          {/* MULTI-CAMPUS / INSTITUTIONS BUTTON - ADMIN ONLY */}
+          {isAdmin && (
+            <button
+              id="btn-navbar-institutions"
+              onClick={() => setIsInstitutionsModalOpen(true)}
+              className="inline-flex items-center gap-1.5 bg-emerald-50 dark:bg-emerald-950/50 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800 text-xs font-bold px-3 py-2 rounded-xl transition-all shadow-2xs"
+              title="Manage and switch between client universities or provision new ones"
+            >
+              <Building2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+              <span className="hidden lg:inline">{currentInstitution.shortName}</span>
+              <span className="lg:hidden">{currentInstitution.code}</span>
+            </button>
+          )}
 
-          {/* ADMIN CONTROLS BUTTON */}
+          {/* ADMIN CONTROLS BUTTON - ADMIN ONLY */}
           {isAdmin && (
             <button
               id="btn-navbar-admin-center"
@@ -370,49 +336,22 @@ export const Navbar: React.FC<NavbarProps> = ({
                   <ThemeToggle variant="segmented" />
                 </div>
 
-                <div className="px-3 py-2 border-b border-slate-100 dark:border-slate-800">
-                  <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Switch Demo Account</p>
-                  <div className="space-y-1">
-                    {allUsers.map((user) => (
+                {/* Administrative Controls - Only for Admins */}
+                {isAdmin && (
+                  <div className="px-2 pt-1 border-b border-slate-100 dark:border-slate-800 pb-1 space-y-0.5">
+                    {onOpenClassrooms && (
                       <button
-                        key={user.id}
+                        id="btn-menu-setup-classrooms"
                         onClick={() => {
-                          switchUser(user.id);
+                          onOpenClassrooms();
                           setShowUserMenu(false);
                         }}
-                        className={`w-full text-left px-2.5 py-1.5 rounded-lg text-xs flex items-center justify-between ${
-                          user.id === currentUser.id
-                            ? 'bg-indigo-50 dark:bg-indigo-950/60 font-bold text-indigo-700 dark:text-indigo-300'
-                            : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-200'
-                        }`}
+                        className="w-full text-left px-3 py-2 rounded-lg text-xs text-indigo-700 dark:text-indigo-300 hover:bg-indigo-50 dark:hover:bg-indigo-950/30 flex items-center gap-2 font-bold"
                       >
-                        <div className="flex items-center gap-2">
-                          <span className={`w-2 h-2 rounded-full ${
-                            user.role === 'admin' ? 'bg-rose-500' : user.role === 'teacher' ? 'bg-purple-500' : 'bg-emerald-500'
-                          }`} />
-                          <span>{user.name}</span>
-                        </div>
-                        <span className="text-[10px] uppercase font-semibold text-slate-400">{user.role}</span>
+                        <School className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+                        Setup Classrooms
                       </button>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="px-2 pt-1 space-y-0.5">
-                  {onOpenClassrooms && (
-                    <button
-                      id="btn-menu-setup-classrooms"
-                      onClick={() => {
-                        onOpenClassrooms();
-                        setShowUserMenu(false);
-                      }}
-                      className="w-full text-left px-3 py-2 rounded-lg text-xs text-indigo-700 dark:text-indigo-300 hover:bg-indigo-50 dark:hover:bg-indigo-950/30 flex items-center gap-2 font-bold"
-                    >
-                      <School className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
-                      Setup Classrooms (Window)
-                    </button>
-                  )}
-                  {isAdmin && (
+                    )}
                     <button
                       id="btn-menu-admin-center"
                       onClick={() => {
@@ -424,29 +363,21 @@ export const Navbar: React.FC<NavbarProps> = ({
                       <ShieldAlert className="w-4 h-4 text-rose-600 dark:text-rose-400" />
                       Admin Control Center
                     </button>
-                  )}
-                  <button
-                    id="btn-nav-manage-institutions-menu"
-                    onClick={() => {
-                      setIsInstitutionsModalOpen(true);
-                      setShowUserMenu(false);
-                    }}
-                    className="w-full text-left px-3 py-2 rounded-lg text-xs text-emerald-700 dark:text-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 flex items-center gap-2 font-bold"
-                  >
-                    <Building2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-                    Client Universities ({institutions.length})
-                  </button>
-                  <button
-                    id="btn-nav-builder-svcode"
-                    onClick={() => {
-                      setIsBuilderSVModalOpen(true);
-                      setShowUserMenu(false);
-                    }}
-                    className="w-full text-left px-3 py-2 rounded-lg text-xs text-amber-700 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/30 flex items-center gap-2 font-bold"
-                  >
-                    <KeyRound className="w-4 h-4 text-amber-600 dark:text-amber-400" />
-                    Builder Setup: SV-Code
-                  </button>
+                    <button
+                      id="btn-nav-manage-institutions-menu"
+                      onClick={() => {
+                        setIsInstitutionsModalOpen(true);
+                        setShowUserMenu(false);
+                      }}
+                      className="w-full text-left px-3 py-2 rounded-lg text-xs text-emerald-700 dark:text-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 flex items-center gap-2 font-bold"
+                    >
+                      <Building2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                      Manage Institutions ({institutions.length})
+                    </button>
+                  </div>
+                )}
+
+                <div className="px-2 pt-1 space-y-0.5">
                   <button
                     onClick={() => {
                       onNavigate('profile');

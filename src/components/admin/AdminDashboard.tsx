@@ -329,6 +329,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             onClick={() => {
               const alex = students.find(s => s.name.includes('Alex')) || students[0];
               if (alex) {
+                if (typeof window !== 'undefined') {
+                  sessionStorage.setItem('campushub_admin_impersonating', 'true');
+                }
                 switchUser(alex.id);
                 showToast(`Switched view to Student Alex Rivera`);
               }
@@ -344,6 +347,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             onClick={() => {
               const chen = teachers.find(t => t.name.includes('Chen')) || teachers[0];
               if (chen) {
+                if (typeof window !== 'undefined') {
+                  sessionStorage.setItem('campushub_admin_impersonating', 'true');
+                }
                 switchUser(chen.id);
                 showToast(`Switched view to Faculty Dr. Robert Chen`);
               }
@@ -359,6 +365,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             onClick={() => {
               const prof = teachers.find(t => t.name.includes('Williams')) || teachers[1];
               if (prof) {
+                if (typeof window !== 'undefined') {
+                  sessionStorage.setItem('campushub_admin_impersonating', 'true');
+                }
                 switchUser(prof.id);
                 showToast(`Switched view to Prof. Sarah Williams`);
               }

@@ -61,6 +61,7 @@ export interface User {
   adminId?: string;
   principalId?: string;
   title?: string; // e.g. "Associate Professor" or "Campus Administrator"
+  emailVerified?: boolean;
 }
 
 export interface UniversityClass {

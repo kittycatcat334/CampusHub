@@ -251,8 +251,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
           })}
         </nav>
 
-        {/* Separate Classroom Setup Window CTA Button */}
-        {onOpenClassrooms && (
+        {/* Separate Classroom Setup Window CTA Button - Admin Only */}
+        {isAdmin && onOpenClassrooms && (
           <div className="mt-3 pt-3 border-t border-slate-100 dark:border-slate-800">
             <button
               id="btn-sidebar-setup-classrooms"

@@ -22,13 +22,14 @@ interface AuthContextType {
   updateStaffVerificationCode: (code: string) => string;
   verifyStaffCode: (code?: string) => boolean;
   login: (email: string, password: string, portalRole?: UserRole, svCode?: string) => { success: boolean; error?: string };
+  loginAdminWithCode: (code: string) => { success: boolean; error?: string };
   loginAsUser: (user: User) => void;
   logout: () => void;
   switchUser: (userId: string) => void;
   switchRole: (role: UserRole) => void;
   updateProfile: (updates: Partial<User>) => void;
   signInWithGooglePlaceholder: () => Promise<void>;
-  createCustomAccount: (name: string, email: string, role: UserRole, department: string, password?: string, svCode?: string) => { success: boolean; error?: string };
+  createCustomAccount: (name: string, email: string, role: UserRole, department: string, password?: string, svCode?: string, emailVerified?: boolean) => { success: boolean; error?: string };
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -120,7 +121,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return clean === '6565' || clean.toUpperCase() === '6565' || db.verifyStaffCode(code);
   };
 
+  const loginAdminWithCode = (code: string) => {
+    const result = db.authenticateAdmin(code);
+    if (result.success && result.user) {
+      setCurrentUser(result.user);
+      setIsAuthenticated(true);
+      safeStorageSet(CURRENT_USER_KEY, result.user.id);
+      safeStorageSet(AUTH_ACTIVE_KEY, 'true');
+      return { success: true };
+    }
+    return { success: false, error: result.error || 'Invalid administrator access code. Enter code 63166565.' };
+  };
+
   const login = (email: string, password: string, portalRole?: UserRole, svCode?: string) => {
+    // If logging into admin with master code 63166565:
+    if (portalRole === 'admin' && (password === '63166565' || svCode === '63166565' || email.trim() === '63166565')) {
+      return loginAdminWithCode('63166565');
+    }
     const result = db.authenticateUser(email, password, portalRole, svCode);
     if (result.success && result.user) {
       setCurrentUser(result.user);
@@ -186,7 +203,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     role: UserRole,
     department: string,
     password?: string,
-    svCode?: string
+    svCode?: string,
+    emailVerified: boolean = false
   ): { success: boolean; error?: string } => {
     const cleanEmail = email.trim().toLowerCase();
     const existingUsers = db.getUsers();
@@ -198,7 +216,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
 
     if (role === 'teacher') {
-      if (!svCode || !verifyStaffCode(svCode)) {
+      const cleanCode = svCode?.trim();
+      if (!cleanCode || (cleanCode !== '6565' && !verifyStaffCode(cleanCode))) {
         return {
           success: false,
           error: 'Valid teacher verification code is required. Please enter code 6565.'
@@ -216,7 +235,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       department: department.trim() || (role === 'teacher' ? 'Computer Science' : 'Undergraduate Studies'),
       studentId: role === 'student' ? `STU-${Math.floor(1000 + Math.random() * 9000)}` : undefined,
       facultyId: role === 'teacher' ? `FAC-${Math.floor(100 + Math.random() * 900)}` : undefined,
-      title: role === 'teacher' ? 'Faculty Instructor' : undefined
+      title: role === 'teacher' ? 'Faculty Instructor' : undefined,
+      emailVerified: Boolean(emailVerified)
     };
 
     db.createUser(newUser);
@@ -246,6 +266,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     updateStaffVerificationCode,
     verifyStaffCode,
     login,
+    loginAdminWithCode,
     loginAsUser,
     logout,
     switchUser,

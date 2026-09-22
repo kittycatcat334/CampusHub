@@ -16,8 +16,9 @@ export const AdminImpersonationBanner: React.FC<AdminImpersonationBannerProps> =
   // Find if there is an admin account in DB
   const adminAccount = allUsers.find(u => u.role === 'admin');
 
-  // If currentUser is already an admin, no need to show impersonation banner
-  if (currentUser?.role === 'admin') return null;
+  // Only show if the admin explicitly initiated an impersonation test session
+  const isImpersonating = typeof window !== 'undefined' && sessionStorage.getItem('campushub_admin_impersonating') === 'true';
+  if (!isImpersonating || currentUser?.role === 'admin') return null;
 
   return (
     <aside
@@ -50,6 +51,9 @@ export const AdminImpersonationBanner: React.FC<AdminImpersonationBannerProps> =
           id="btn-banner-return-admin"
           type="button"
           onClick={() => {
+            if (typeof window !== 'undefined') {
+              sessionStorage.removeItem('campushub_admin_impersonating');
+            }
             if (adminAccount) {
               switchUser(adminAccount.id);
             }
