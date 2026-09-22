@@ -23,9 +23,13 @@ function getSystemTheme(): ResolvedTheme {
 export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [theme, setThemeState] = useState<Theme>(() => {
     if (typeof window === 'undefined') return 'light';
-    const stored = localStorage.getItem(THEME_STORAGE_KEY) as Theme | null;
-    if (stored === 'light' || stored === 'dark' || stored === 'system') {
-      return stored;
+    try {
+      const stored = localStorage.getItem(THEME_STORAGE_KEY) as Theme | null;
+      if (stored === 'light' || stored === 'dark' || stored === 'system') {
+        return stored;
+      }
+    } catch {
+      // Fallback if localStorage is inaccessible
     }
     return 'light'; // default clean light mode
   });
@@ -58,7 +62,11 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       root.style.colorScheme = 'light';
     }
 
-    localStorage.setItem(THEME_STORAGE_KEY, theme);
+    try {
+      localStorage.setItem(THEME_STORAGE_KEY, theme);
+    } catch {
+      // Ignore storage errors
+    }
 
     if (theme === 'system') {
       const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');

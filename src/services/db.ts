@@ -1008,11 +1008,49 @@ function notifyDBChange() {
   });
 }
 
+// Memory store fallback if localStorage is disabled or throws SecurityError
+const memoryFallbackStore: Record<string, string> = {};
+
+export function safeStorageGet(key: string): string | null {
+  try {
+    if (typeof window !== 'undefined' && window.localStorage) {
+      return window.localStorage.getItem(key);
+    }
+  } catch (e) {
+    // Private mode or cross-origin iframe security block
+  }
+  return memoryFallbackStore[key] ?? null;
+}
+
+export function safeStorageSet(key: string, value: string): void {
+  try {
+    if (typeof window !== 'undefined' && window.localStorage) {
+      window.localStorage.setItem(key, value);
+      return;
+    }
+  } catch (e) {
+    // Private mode or cross-origin iframe security block
+  }
+  memoryFallbackStore[key] = value;
+}
+
+export function safeStorageRemove(key: string): void {
+  try {
+    if (typeof window !== 'undefined' && window.localStorage) {
+      window.localStorage.removeItem(key);
+      return;
+    }
+  } catch (e) {
+    // Private mode or cross-origin iframe security block
+  }
+  delete memoryFallbackStore[key];
+}
+
 function loadStorage<T>(key: string, fallback: T): T {
   try {
-    const raw = localStorage.getItem(key);
+    const raw = safeStorageGet(key);
     if (!raw) {
-      localStorage.setItem(key, JSON.stringify(fallback));
+      safeStorageSet(key, JSON.stringify(fallback));
       return fallback;
     }
     return JSON.parse(raw);
@@ -1024,7 +1062,7 @@ function loadStorage<T>(key: string, fallback: T): T {
 
 function saveStorage<T>(key: string, value: T): void {
   try {
-    localStorage.setItem(key, JSON.stringify(value));
+    safeStorageSet(key, JSON.stringify(value));
     notifyDBChange();
   } catch (err) {
     console.error(`Failed to save ${key} to storage:`, err);
@@ -1033,64 +1071,68 @@ function saveStorage<T>(key: string, value: T): void {
 
 // Ensure initial database seeding
 export function initDatabase(): void {
-  if (!localStorage.getItem(KEYS.INSTITUTIONS)) {
-    localStorage.setItem(KEYS.INSTITUTIONS, JSON.stringify(DEFAULT_INSTITUTIONS));
-  }
-  if (!localStorage.getItem(KEYS.CURRENT_INSTITUTION)) {
-    localStorage.setItem(KEYS.CURRENT_INSTITUTION, DEFAULT_INSTITUTIONS[0].id);
-  }
-  if (!localStorage.getItem(KEYS.CLASSES)) {
-    localStorage.setItem(KEYS.CLASSES, JSON.stringify(DEFAULT_CLASSES));
-  }
-  if (!localStorage.getItem(KEYS.CLASSROOMS)) {
-    localStorage.setItem(KEYS.CLASSROOMS, JSON.stringify(DEFAULT_CLASSROOMS));
-  }
-  if (!localStorage.getItem(KEYS.ASSIGNMENTS)) {
-    localStorage.setItem(KEYS.ASSIGNMENTS, JSON.stringify(DEFAULT_ASSIGNMENTS));
-  }
-  if (!localStorage.getItem(KEYS.SUBMISSIONS)) {
-    localStorage.setItem(KEYS.SUBMISSIONS, JSON.stringify(DEFAULT_SUBMISSIONS));
-  }
-  if (!localStorage.getItem(KEYS.ANNOUNCEMENTS)) {
-    localStorage.setItem(KEYS.ANNOUNCEMENTS, JSON.stringify(DEFAULT_ANNOUNCEMENTS));
-  }
-  if (!localStorage.getItem(KEYS.RESOURCES)) {
-    localStorage.setItem(KEYS.RESOURCES, JSON.stringify(DEFAULT_RESOURCES));
-  }
-  if (!localStorage.getItem(KEYS.ENROLLMENTS)) {
-    localStorage.setItem(KEYS.ENROLLMENTS, JSON.stringify(DEFAULT_ENROLLMENTS));
-  }
-  if (!localStorage.getItem(KEYS.USERS)) {
-    localStorage.setItem(KEYS.USERS, JSON.stringify(DEFAULT_USERS));
-  } else {
-    // Migration: ensure stored users have default passwords and include admin-1
-    try {
-      const stored = JSON.parse(localStorage.getItem(KEYS.USERS) || '[]');
-      let modified = false;
-      if (!stored.some((u: User) => u.role === 'admin')) {
-        stored.unshift(DEFAULT_USERS[0]); // Add admin
-        modified = true;
-      }
-      const updated = stored.map((u: User) => {
-        if (!u.password) {
-          modified = true;
-          return {
-            ...u,
-            password: u.role === 'teacher' ? 'faculty123' : u.role === 'admin' ? 'admin' : 'student123'
-          };
-        }
-        return u;
-      });
-      if (modified) {
-        localStorage.setItem(KEYS.USERS, JSON.stringify(updated));
-      }
-    } catch {
-      localStorage.setItem(KEYS.USERS, JSON.stringify(DEFAULT_USERS));
+  try {
+    if (!safeStorageGet(KEYS.INSTITUTIONS)) {
+      safeStorageSet(KEYS.INSTITUTIONS, JSON.stringify(DEFAULT_INSTITUTIONS));
     }
-  }
-  // Initialize Builder Staff Verification Code (SV-Code)
-  if (!localStorage.getItem(KEYS.SV_CODE)) {
-    localStorage.setItem(KEYS.SV_CODE, DEFAULT_SV_CODE);
+    if (!safeStorageGet(KEYS.CURRENT_INSTITUTION)) {
+      safeStorageSet(KEYS.CURRENT_INSTITUTION, DEFAULT_INSTITUTIONS[0].id);
+    }
+    if (!safeStorageGet(KEYS.CLASSES)) {
+      safeStorageSet(KEYS.CLASSES, JSON.stringify(DEFAULT_CLASSES));
+    }
+    if (!safeStorageGet(KEYS.CLASSROOMS)) {
+      safeStorageSet(KEYS.CLASSROOMS, JSON.stringify(DEFAULT_CLASSROOMS));
+    }
+    if (!safeStorageGet(KEYS.ASSIGNMENTS)) {
+      safeStorageSet(KEYS.ASSIGNMENTS, JSON.stringify(DEFAULT_ASSIGNMENTS));
+    }
+    if (!safeStorageGet(KEYS.SUBMISSIONS)) {
+      safeStorageSet(KEYS.SUBMISSIONS, JSON.stringify(DEFAULT_SUBMISSIONS));
+    }
+    if (!safeStorageGet(KEYS.ANNOUNCEMENTS)) {
+      safeStorageSet(KEYS.ANNOUNCEMENTS, JSON.stringify(DEFAULT_ANNOUNCEMENTS));
+    }
+    if (!safeStorageGet(KEYS.RESOURCES)) {
+      safeStorageSet(KEYS.RESOURCES, JSON.stringify(DEFAULT_RESOURCES));
+    }
+    if (!safeStorageGet(KEYS.ENROLLMENTS)) {
+      safeStorageSet(KEYS.ENROLLMENTS, JSON.stringify(DEFAULT_ENROLLMENTS));
+    }
+    if (!safeStorageGet(KEYS.USERS)) {
+      safeStorageSet(KEYS.USERS, JSON.stringify(DEFAULT_USERS));
+    } else {
+      // Migration: ensure stored users have default passwords and include admin-1
+      try {
+        const stored = JSON.parse(safeStorageGet(KEYS.USERS) || '[]');
+        let modified = false;
+        if (!stored.some((u: User) => u.role === 'admin')) {
+          stored.unshift(DEFAULT_USERS[0]); // Add admin
+          modified = true;
+        }
+        const updated = stored.map((u: User) => {
+          if (!u.password) {
+            modified = true;
+            return {
+              ...u,
+              password: u.role === 'teacher' ? 'faculty123' : u.role === 'admin' ? 'admin' : 'student123'
+            };
+          }
+          return u;
+        });
+        if (modified) {
+          safeStorageSet(KEYS.USERS, JSON.stringify(updated));
+        }
+      } catch {
+        safeStorageSet(KEYS.USERS, JSON.stringify(DEFAULT_USERS));
+      }
+    }
+    // Initialize Builder Staff Verification Code (SV-Code)
+    if (!safeStorageGet(KEYS.SV_CODE)) {
+      safeStorageSet(KEYS.SV_CODE, DEFAULT_SV_CODE);
+    }
+  } catch (err) {
+    console.warn('initDatabase encountered error, falling back gracefully:', err);
   }
 }
 
@@ -1098,17 +1140,17 @@ export function initDatabase(): void {
 export const db = {
   // Reset
   resetData(): void {
-    localStorage.setItem(KEYS.INSTITUTIONS, JSON.stringify(DEFAULT_INSTITUTIONS));
-    localStorage.setItem(KEYS.CURRENT_INSTITUTION, DEFAULT_INSTITUTIONS[0].id);
-    localStorage.setItem(KEYS.CLASSES, JSON.stringify(DEFAULT_CLASSES));
-    localStorage.setItem(KEYS.CLASSROOMS, JSON.stringify(DEFAULT_CLASSROOMS));
-    localStorage.setItem(KEYS.ASSIGNMENTS, JSON.stringify(DEFAULT_ASSIGNMENTS));
-    localStorage.setItem(KEYS.SUBMISSIONS, JSON.stringify(DEFAULT_SUBMISSIONS));
-    localStorage.setItem(KEYS.ANNOUNCEMENTS, JSON.stringify(DEFAULT_ANNOUNCEMENTS));
-    localStorage.setItem(KEYS.RESOURCES, JSON.stringify(DEFAULT_RESOURCES));
-    localStorage.setItem(KEYS.ENROLLMENTS, JSON.stringify(DEFAULT_ENROLLMENTS));
-    localStorage.setItem(KEYS.USERS, JSON.stringify(DEFAULT_USERS));
-    localStorage.setItem(KEYS.SV_CODE, DEFAULT_SV_CODE);
+    safeStorageSet(KEYS.INSTITUTIONS, JSON.stringify(DEFAULT_INSTITUTIONS));
+    safeStorageSet(KEYS.CURRENT_INSTITUTION, DEFAULT_INSTITUTIONS[0].id);
+    safeStorageSet(KEYS.CLASSES, JSON.stringify(DEFAULT_CLASSES));
+    safeStorageSet(KEYS.CLASSROOMS, JSON.stringify(DEFAULT_CLASSROOMS));
+    safeStorageSet(KEYS.ASSIGNMENTS, JSON.stringify(DEFAULT_ASSIGNMENTS));
+    safeStorageSet(KEYS.SUBMISSIONS, JSON.stringify(DEFAULT_SUBMISSIONS));
+    safeStorageSet(KEYS.ANNOUNCEMENTS, JSON.stringify(DEFAULT_ANNOUNCEMENTS));
+    safeStorageSet(KEYS.RESOURCES, JSON.stringify(DEFAULT_RESOURCES));
+    safeStorageSet(KEYS.ENROLLMENTS, JSON.stringify(DEFAULT_ENROLLMENTS));
+    safeStorageSet(KEYS.USERS, JSON.stringify(DEFAULT_USERS));
+    safeStorageSet(KEYS.SV_CODE, DEFAULT_SV_CODE);
     notifyDBChange();
   },
 
@@ -1122,7 +1164,7 @@ export const db = {
   },
 
   getCurrentInstitutionId(): string {
-    const stored = localStorage.getItem(KEYS.CURRENT_INSTITUTION);
+    const stored = safeStorageGet(KEYS.CURRENT_INSTITUTION);
     if (stored) {
       const match = this.getInstitutionById(stored);
       if (match) return match.id;
@@ -1139,10 +1181,10 @@ export const db = {
   setCurrentInstitution(institutionId: string): Institution {
     const target = this.getInstitutionById(institutionId);
     if (!target) throw new Error('Institution not found');
-    localStorage.setItem(KEYS.CURRENT_INSTITUTION, target.id);
+    safeStorageSet(KEYS.CURRENT_INSTITUTION, target.id);
     // Update active SV code to match the university's verification code if set
     if (target.staffVerificationCode) {
-      localStorage.setItem(KEYS.SV_CODE, target.staffVerificationCode);
+      safeStorageSet(KEYS.SV_CODE, target.staffVerificationCode);
     }
     notifyDBChange();
     return target;

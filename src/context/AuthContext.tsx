@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { User, UserRole, Institution } from '../types';
-import { db, DEFAULT_USERS, DEFAULT_INSTITUTIONS, initDatabase, subscribeToDB } from '../services/db';
+import { db, DEFAULT_USERS, DEFAULT_INSTITUTIONS, initDatabase, subscribeToDB, safeStorageGet, safeStorageSet, safeStorageRemove } from '../services/db';
 
 interface AuthContextType {
   currentUser: User;
@@ -39,7 +39,7 @@ const AUTH_ACTIVE_KEY = 'campushub_auth_active';
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
     initDatabase();
-    return localStorage.getItem(AUTH_ACTIVE_KEY) === 'true';
+    return safeStorageGet(AUTH_ACTIVE_KEY) === 'true';
   });
 
   const [institutions, setInstitutions] = useState<Institution[]>(() => {
@@ -54,7 +54,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const [currentUser, setCurrentUser] = useState<User>(() => {
     initDatabase();
-    const storedId = localStorage.getItem(CURRENT_USER_KEY);
+    const storedId = safeStorageGet(CURRENT_USER_KEY);
     const users = db.getUsers();
     if (storedId) {
       const match = users.find(u => u.id === storedId);
@@ -123,8 +123,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (result.success && result.user) {
       setCurrentUser(result.user);
       setIsAuthenticated(true);
-      localStorage.setItem(CURRENT_USER_KEY, result.user.id);
-      localStorage.setItem(AUTH_ACTIVE_KEY, 'true');
+      safeStorageSet(CURRENT_USER_KEY, result.user.id);
+      safeStorageSet(AUTH_ACTIVE_KEY, 'true');
       return { success: true };
     }
     return { success: false, error: result.error || 'Authentication failed' };
@@ -133,20 +133,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const loginAsUser = (user: User) => {
     setCurrentUser(user);
     setIsAuthenticated(true);
-    localStorage.setItem(CURRENT_USER_KEY, user.id);
-    localStorage.setItem(AUTH_ACTIVE_KEY, 'true');
+    safeStorageSet(CURRENT_USER_KEY, user.id);
+    safeStorageSet(AUTH_ACTIVE_KEY, 'true');
   };
 
   const logout = () => {
     setIsAuthenticated(false);
-    localStorage.removeItem(AUTH_ACTIVE_KEY);
+    safeStorageRemove(AUTH_ACTIVE_KEY);
   };
 
   const switchUser = (userId: string) => {
     const target = allUsers.find(u => u.id === userId);
     if (target) {
       setCurrentUser(target);
-      localStorage.setItem(CURRENT_USER_KEY, target.id);
+      safeStorageSet(CURRENT_USER_KEY, target.id);
     }
   };
 
