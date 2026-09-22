@@ -1,0 +1,6 @@
+{
+  "name": "CampusHub",
+  "description": "University academic management platform bringing assignments, deadlines, announcements, class resources, and submissions into one organized workspace for students and teachers.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
