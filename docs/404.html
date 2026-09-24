@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" class="dark">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -13,9 +13,9 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
     <script>
-      // Single Page Application routing restoration for GitHub Pages
+      // Single Page Application routing restoration for GitHub Pages & custom subpath domains
       (function(l) {
-        if (l.search[1] === '/' ) {
+        if (l.search && l.search[1] === '/') {
           var decoded = l.search.slice(1).split('&').map(function(s) { 
             return s.replace(/~and~/g, '&');
           }).join('?');
@@ -32,11 +32,23 @@
           window.location.replace(loc.pathname + '/' + loc.search + loc.hash);
         }
       })();
+
+      // Prevent flash of light theme on initial startup
+      try {
+        var savedTheme = localStorage.getItem('campushub_theme_mode');
+        if (savedTheme === 'light') {
+          document.documentElement.classList.remove('dark');
+        } else {
+          document.documentElement.classList.add('dark');
+        }
+      } catch (e) {}
     </script>
-    <script type="module" crossorigin src="./assets/index-BMN5_U39.js"></script>
-    <link rel="stylesheet" crossorigin href="./assets/index-B4Z0-gp7.css">
+    <!-- Google Identity Services for real Google Authentication -->
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <script type="module" crossorigin src="./assets/index-Bku3yIEg.js"></script>
+    <link rel="stylesheet" crossorigin href="./assets/index-BrFF_oog.css">
   </head>
-  <body class="bg-slate-900 text-slate-100 antialiased selection:bg-indigo-500 selection:text-white">
+  <body class="bg-slate-900 text-slate-100 antialiased selection:bg-indigo-500 selection:text-white min-h-screen">
     <div id="root">
       <!-- Branded instant loading state preventing white screens during initial load -->
       <div id="gh-loading-fallback" style="min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;background-color:#0f172a;color:#f8fafc;font-family:'Plus Jakarta Sans',system-ui,sans-serif;padding:24px;text-align:center;">
@@ -50,15 +62,14 @@
       </div>
     </div>
     <script>
-      // Fallback detector: If root is not mounted on GitHub Pages static host after 3s, forward to pre-compiled bundle in /docs/
+      // Fallback detector: If root is not mounted on GitHub Pages static host after 3.5s, forward to pre-compiled bundle in /docs/
       setTimeout(function() {
         var fallback = document.getElementById('gh-loading-fallback');
         if (fallback && window.location.hostname.endsWith('github.io') && !window.location.pathname.includes('/docs/')) {
           var target = window.location.pathname.replace(/\/+$/, '') + '/docs/' + window.location.search + window.location.hash;
           window.location.replace(target);
         }
-      }, 3000);
+      }, 3500);
     </script>
   </body>
 </html>
-

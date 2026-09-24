@@ -31,7 +31,7 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     } catch {
       // Fallback if localStorage is inaccessible
     }
-    return 'light'; // default clean light mode
+    return 'dark'; // default dark mode matching CampusHub dark theme
   });
 
   const [resolvedTheme, setResolvedTheme] = useState<ResolvedTheme>(() => {

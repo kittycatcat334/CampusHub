@@ -5,7 +5,8 @@ import {defineConfig} from 'vite';
 
 export default defineConfig(() => {
   return {
-    base: '/',
+    // Relative base path ensures assets resolve correctly on GitHub Pages (e.g. https://<user>.github.io/<repo>/) and custom subdomains
+    base: './',
     plugins: [react(), tailwindcss()],
     resolve: {
       alias: {
