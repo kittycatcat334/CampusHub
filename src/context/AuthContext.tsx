@@ -29,6 +29,7 @@ interface AuthContextType {
   switchRole: (role: UserRole) => void;
   updateProfile: (updates: Partial<User>) => void;
   signInWithGooglePlaceholder: () => Promise<void>;
+  loginWithGoogle: (payload: { email: string; name: string; avatarUrl?: string; role: UserRole; googleId?: string; svCode?: string; department?: string }) => { success: boolean; error?: string };
   createCustomAccount: (name: string, email: string, role: UserRole, department: string, password?: string, svCode?: string, emailVerified?: boolean) => { success: boolean; error?: string };
 }
 
@@ -197,6 +198,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // const client = google.accounts.oauth2.initTokenClient({...})
   };
 
+  const loginWithGoogle = (payload: {
+    email: string;
+    name: string;
+    avatarUrl?: string;
+    role: UserRole;
+    googleId?: string;
+    svCode?: string;
+    department?: string;
+  }): { success: boolean; error?: string } => {
+    const res = db.authenticateOrRegisterGoogleUser(payload);
+    if (res.success && res.user) {
+      setCurrentUser(res.user);
+      setIsAuthenticated(true);
+      safeStorageSet(CURRENT_USER_KEY, res.user.id);
+      safeStorageSet(AUTH_ACTIVE_KEY, 'true');
+      setAllUsers(db.getUsers());
+      return { success: true };
+    }
+    return { success: false, error: res.error || 'Google authentication failed' };
+  };
+
   const createCustomAccount = (
     name: string,
     email: string,
@@ -236,10 +258,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       studentId: role === 'student' ? `STU-${Math.floor(1000 + Math.random() * 9000)}` : undefined,
       facultyId: role === 'teacher' ? `FAC-${Math.floor(100 + Math.random() * 900)}` : undefined,
       title: role === 'teacher' ? 'Faculty Instructor' : undefined,
-      emailVerified: Boolean(emailVerified)
+      emailVerified: Boolean(emailVerified),
+      authProvider: 'local'
     };
 
     db.createUser(newUser);
+
+    // Auto-enroll new students in classes so their LMS workspace is full and active immediately
+    if (role === 'student') {
+      const initialClasses = db.getClasses().slice(0, 3);
+      initialClasses.forEach(cls => {
+        try {
+          db.enrollStudent(cls.id, newUser.id);
+        } catch {}
+      });
+    }
+
     setAllUsers(db.getUsers());
     setCurrentUser(newUser);
     setIsAuthenticated(true);
@@ -273,6 +307,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     switchRole,
     updateProfile,
     signInWithGooglePlaceholder,
+    loginWithGoogle,
     createCustomAccount
   };
 

@@ -62,6 +62,8 @@ export interface User {
   principalId?: string;
   title?: string; // e.g. "Associate Professor" or "Campus Administrator"
   emailVerified?: boolean;
+  authProvider?: 'google' | 'local';
+  googleId?: string;
 }
 
 export interface UniversityClass {
