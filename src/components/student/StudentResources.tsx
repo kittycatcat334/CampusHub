@@ -22,7 +22,8 @@ import {
   Calendar,
   CheckCircle2,
   Copy,
-  Maximize2
+  Maximize2,
+  Trash2
 } from 'lucide-react';
 
 interface StudentResourcesProps {
@@ -35,9 +36,23 @@ export const StudentResources: React.FC<StudentResourcesProps> = ({
   onSelectCourse
 }) => {
   const { currentUser } = useAuth();
-  const enrolledClasses = db.getStudentClasses(currentUser.id);
+  if (!currentUser) return null;
+
+  const isAdmin = currentUser.role === 'admin';
+  const isTeacher = currentUser.role === 'teacher';
+  const enrolledClasses = isAdmin ? db.getClasses() : isTeacher ? db.getTeacherClasses(currentUser.id) : db.getStudentClasses(currentUser.id);
   const enrolledClassIds = new Set(enrolledClasses.map(c => c.id));
-  const resources = db.getResources().filter(r => enrolledClassIds.has(r.classId));
+
+  const getResourcesForUser = () => {
+    if (isAdmin || isTeacher) return db.getResources();
+    return db.getResources().filter(r => enrolledClassIds.has(r.classId));
+  };
+
+  const [resources, setResources] = useState<ClassResource[]>(() => getResourcesForUser());
+
+  const refreshResources = () => {
+    setResources(getResourcesForUser());
+  };
 
   const [activeSubjectId, setActiveSubjectId] = useState<string>(selectedCourseId || 'all');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
@@ -322,9 +337,26 @@ export const StudentResources: React.FC<StudentResourcesProps> = ({
                           <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded bg-white text-indigo-700 border border-slate-200">
                             {res.category}
                           </span>
-                          <span className="text-[10px] text-slate-400 font-mono">
-                            {res.fileSize || 'PDF'}
-                          </span>
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-[10px] text-slate-400 font-mono">
+                              {res.fileSize || 'PDF'}
+                            </span>
+                            {(isAdmin || isTeacher) && (
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  if (confirm(`Permanently delete resource "${res.title}"?`)) {
+                                    db.deleteResource(res.id);
+                                    refreshResources();
+                                  }
+                                }}
+                                className="p-1 rounded text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors"
+                                title="Delete Resource"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+                          </div>
                         </div>
 
                         <div className="flex items-start gap-2.5">
@@ -396,9 +428,26 @@ export const StudentResources: React.FC<StudentResourcesProps> = ({
                     <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded bg-indigo-50 text-indigo-700 border border-indigo-100">
                       {res.category}
                     </span>
-                    <span className="text-[10px] font-mono text-slate-400 font-medium">
-                      {res.fileSize || 'PDF'}
-                    </span>
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[10px] font-mono text-slate-400 font-medium">
+                        {res.fileSize || 'PDF'}
+                      </span>
+                      {(isAdmin || isTeacher) && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (confirm(`Permanently delete resource "${res.title}"?`)) {
+                              db.deleteResource(res.id);
+                              refreshResources();
+                            }
+                          }}
+                          className="p-1 rounded text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors"
+                          title="Delete Resource"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                    </div>
                   </div>
 
                   <div className="flex items-start gap-3">

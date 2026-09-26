@@ -16,7 +16,7 @@ export const PostAnnouncementModal: React.FC<PostAnnouncementModalProps> = ({
   initialClassId
 }) => {
   const { currentUser } = useAuth();
-  const classes = db.getTeacherClasses(currentUser.id);
+  const classes = currentUser?.role === 'admin' ? db.getClasses() : db.getTeacherClasses(currentUser.id);
 
   const [classId, setClassId] = useState<string>(initialClassId || (classes[0]?.id ?? ''));
   const [title, setTitle] = useState('');

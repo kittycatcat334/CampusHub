@@ -1318,6 +1318,29 @@ export const db = {
     notifyDBChange();
   },
 
+  // Clear all dummy / demo placeholder data so teachers, students and admins can start with real data
+  clearDummyData(): void {
+    safeStorageSet(KEYS.CLASSES, JSON.stringify([]));
+    safeStorageSet(KEYS.CLASSROOMS, JSON.stringify([]));
+    safeStorageSet(KEYS.ASSIGNMENTS, JSON.stringify([]));
+    safeStorageSet(KEYS.SUBMISSIONS, JSON.stringify([]));
+    safeStorageSet(KEYS.ANNOUNCEMENTS, JSON.stringify([]));
+    safeStorageSet(KEYS.RESOURCES, JSON.stringify([]));
+    safeStorageSet(KEYS.ENROLLMENTS, JSON.stringify([]));
+    safeStorageSet(KEYS.PERSONAL_SCHEDULE, JSON.stringify([]));
+    safeStorageSet(KEYS.ACADEMIC_NOTES, JSON.stringify([]));
+    notifyDBChange();
+  },
+
+  restoreDemoData(): void {
+    this.resetData();
+  },
+
+  hasDummyData(): boolean {
+    const classes = this.getClasses();
+    return classes.some(c => c.id === 'class-1' || c.code === 'CS201' || c.code === 'MATH152');
+  },
+
   // Institutions & Multi-Tenancy Management (For Selling / Onboarding New Universities)
   getInstitutions(): Institution[] {
     return loadStorage<Institution[]>(KEYS.INSTITUTIONS, DEFAULT_INSTITUTIONS);
@@ -1600,6 +1623,15 @@ export const db = {
           };
         }
       }
+      if (existing.role === 'admin' && !existing.emailVerified) {
+        const cleanCode = payload.svCode?.trim();
+        if (!cleanCode || (cleanCode !== '63166565' && cleanCode !== 'admin' && !this.verifyStaffCode(cleanCode))) {
+          return {
+            success: false,
+            error: 'Administrator security code is required for administrator authentication.'
+          };
+        }
+      }
       // Update with Google details
       const updated = this.updateUserProfile(existing.id, {
         avatarUrl: payload.avatarUrl || existing.avatarUrl,
@@ -1621,6 +1653,15 @@ export const db = {
         };
       }
     }
+    if (payload.role === 'admin') {
+      const cleanCode = payload.svCode?.trim();
+      if (!cleanCode || (cleanCode !== '63166565' && cleanCode !== 'admin' && !this.verifyStaffCode(cleanCode))) {
+        return {
+          success: false,
+          error: 'Administrator access code is required to authorize admin accounts.'
+        };
+      }
+    }
 
     const currentInst = this.getCurrentInstitution();
     const newUserId = `google-user-${Date.now()}`;
@@ -1631,13 +1672,14 @@ export const db = {
       email: cleanEmail,
       role: payload.role,
       avatarUrl: payload.avatarUrl || `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(payload.name)}`,
-      department: payload.department?.trim() || (payload.role === 'teacher' ? 'Computer Science & Engineering' : 'Undergraduate Studies'),
+      department: payload.department?.trim() || (payload.role === 'teacher' ? 'Computer Science & Engineering' : payload.role === 'admin' ? 'University Administration & Governance' : 'Undergraduate Studies'),
       emailVerified: true,
       authProvider: 'google',
       googleId: payload.googleId,
+      adminId: payload.role === 'admin' ? `ADMIN-EXEC-${Math.floor(10 + Math.random() * 90)}` : undefined,
       studentId: payload.role === 'student' ? `STU-${Math.floor(10000 + Math.random() * 90000)}` : undefined,
       facultyId: payload.role === 'teacher' ? `FAC-${Math.floor(1000 + Math.random() * 9000)}` : undefined,
-      title: payload.role === 'teacher' ? 'Faculty Instructor' : undefined
+      title: payload.role === 'teacher' ? 'Faculty Instructor' : payload.role === 'admin' ? 'System Administrator' : undefined
     };
 
     this.createUser(newUser);
@@ -1814,6 +1856,40 @@ export const db = {
     const classes = this.getClasses();
     const filtered = classes.filter(c => c.id !== classId);
     saveStorage(KEYS.CLASSES, filtered);
+
+    // Cascade delete enrollments
+    const enrollments = loadStorage<Enrollment[]>(KEYS.ENROLLMENTS, DEFAULT_ENROLLMENTS);
+    saveStorage(KEYS.ENROLLMENTS, enrollments.filter(e => e.classId !== classId));
+
+    // Cascade delete assignments and their submissions
+    const assignments = this.getAssignments();
+    const removedAssignIds = new Set(assignments.filter(a => a.classId === classId).map(a => a.id));
+    saveStorage(KEYS.ASSIGNMENTS, assignments.filter(a => a.classId !== classId));
+
+    const submissions = this.getSubmissions();
+    saveStorage(KEYS.SUBMISSIONS, submissions.filter(s => !removedAssignIds.has(s.assignmentId)));
+
+    // Cascade delete announcements and resources
+    const announcements = this.getAnnouncements();
+    saveStorage(KEYS.ANNOUNCEMENTS, announcements.filter(a => a.classId !== classId));
+
+    const resources = this.getResources();
+    saveStorage(KEYS.RESOURCES, resources.filter(r => r.classId !== classId));
+
+    // Also update linked classrooms
+    const classrooms = this.getClassrooms();
+    let roomModified = false;
+    classrooms.forEach(r => {
+      if (r.classId === classId) {
+        delete r.classId;
+        roomModified = true;
+      }
+    });
+    if (roomModified) {
+      saveStorage(KEYS.CLASSROOMS, classrooms);
+    }
+
+    notifyDBChange();
     return true;
   },
 
@@ -2079,6 +2155,13 @@ export const db = {
     all.unshift(newRes);
     saveStorage(KEYS.RESOURCES, all);
     return newRes;
+  },
+
+  deleteResource(resourceId: string): boolean {
+    const all = this.getResources();
+    const filtered = all.filter(r => r.id !== resourceId);
+    saveStorage(KEYS.RESOURCES, filtered);
+    return true;
   },
 
   // Academic Work Evaluation (Answers "What academic work do I need to deal with?")

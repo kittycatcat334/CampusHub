@@ -39,13 +39,17 @@ export const TeacherAssignments: React.FC<TeacherAssignmentsProps> = ({
   const { currentUser } = useAuth();
   if (!currentUser) return null;
 
-  const teacherClasses = db.getTeacherClasses(currentUser.id);
+  const isAdmin = currentUser.role === 'admin';
+  const teacherClasses = isAdmin ? db.getClasses() : db.getTeacherClasses(currentUser.id);
   const teacherClassIds = new Set(teacherClasses.map(c => c.id));
-  const classMap = new Map(teacherClasses.map(c => [c.id, c]));
+  const classMap = new Map(db.getClasses().map(c => [c.id, c]));
 
-  const [assignments, setAssignments] = useState<Assignment[]>(() =>
-    db.getAssignments().filter(a => teacherClassIds.has(a.classId))
-  );
+  const getAssignmentsForUser = () => {
+    if (isAdmin) return db.getAssignments();
+    return db.getAssignments().filter(a => teacherClassIds.has(a.classId));
+  };
+
+  const [assignments, setAssignments] = useState<Assignment[]>(() => getAssignmentsForUser());
   const [submissions, setSubmissions] = useState<Submission[]>(() => db.getSubmissions());
 
   const [selectedClassId, setSelectedClassId] = useState<string>(selectedCourseId || 'all');
@@ -64,7 +68,7 @@ export const TeacherAssignments: React.FC<TeacherAssignmentsProps> = ({
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
 
   const refreshAssignments = () => {
-    setAssignments(db.getAssignments().filter(a => teacherClassIds.has(a.classId)));
+    setAssignments(getAssignmentsForUser());
     setSubmissions(db.getSubmissions());
   };
 
@@ -215,6 +219,13 @@ export const TeacherAssignments: React.FC<TeacherAssignmentsProps> = ({
           <FileCheck2 className="w-10 h-10 text-slate-300 mx-auto mb-2" />
           <h3 className="font-bold text-slate-800 text-sm">No assignments found</h3>
           <p className="text-slate-400 text-xs mt-1">Create an assignment to start collecting student work.</p>
+          <button
+            onClick={onOpenCreateAssignment}
+            className="mt-4 inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold text-white bg-purple-700 hover:bg-purple-800 shadow-sm"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            Create Assignment
+          </button>
         </div>
       ) : (
         <div className="space-y-4">
@@ -269,6 +280,20 @@ export const TeacherAssignments: React.FC<TeacherAssignmentsProps> = ({
                     >
                       <Edit3 className="w-3.5 h-3.5" />
                       <span>Modify Dates</span>
+                    </button>
+
+                    {/* DELETE ASSIGNMENT BUTTON */}
+                    <button
+                      onClick={() => {
+                        if (confirm(`Permanently delete assignment "${assignment.title}" and remove all submissions?`)) {
+                          db.deleteAssignment(assignment.id);
+                          refreshAssignments();
+                        }
+                      }}
+                      className="p-2 rounded-xl border border-slate-200 bg-white hover:bg-rose-50 text-slate-400 hover:text-rose-600 hover:border-rose-300 text-xs font-bold transition-all shadow-2xs"
+                      title="Delete Assignment"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
                     </button>
 
                     <button

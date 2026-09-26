@@ -161,6 +161,20 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     }
   };
 
+  const handlePurgeDummyData = () => {
+    if (confirm('Are you sure you want to purge all dummy/sample data? This removes sample courses (CS201, MATH152, etc.), dummy assignments, mock classrooms, and announcements, leaving a clean system so teachers, students, and admins can add real items.')) {
+      db.clearDummyData();
+      showToast('All dummy sample data purged! You have a clean slate for real university content.');
+    }
+  };
+
+  const handleRestoreDemoData = () => {
+    if (confirm('Restore sample university courses, demo assignments, and classrooms?')) {
+      db.restoreDemoData();
+      showToast('Demo sample data restored successfully.');
+    }
+  };
+
   const handleCreateUserSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newUserName.trim() || !newUserEmail.trim()) return;
@@ -308,6 +322,29 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             >
               <Users className="w-4 h-4 text-purple-400" />
               <span>Add User</span>
+            </button>
+
+            {/* PURGE DUMMY DATA / CLEAN SLATE BUTTON */}
+            <button
+              id="btn-admin-purge-dummy-data"
+              type="button"
+              onClick={handlePurgeDummyData}
+              className="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-rose-600/90 hover:bg-rose-500 text-white text-xs font-bold shadow-md shadow-rose-600/30 transition-all cursor-pointer"
+              title="Remove dummy sample courses, assignments, and classrooms so students & faculty can add real items"
+            >
+              <Trash2 className="w-4 h-4" />
+              <span>Purge Dummy Content</span>
+            </button>
+
+            <button
+              id="btn-admin-restore-demo-data"
+              type="button"
+              onClick={handleRestoreDemoData}
+              className="inline-flex items-center gap-1.5 px-3 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 text-xs font-medium transition-all cursor-pointer"
+              title="Restore default sample courses and demo content"
+            >
+              <RotateCcw className="w-3.5 h-3.5 text-slate-400" />
+              <span>Restore Samples</span>
             </button>
           </div>
         </div>

@@ -35,9 +35,16 @@ export const TeacherClasses: React.FC<TeacherClassesProps> = ({
   onOpenUploadResource
 }) => {
   const { currentUser } = useAuth();
-  const [classes, setClasses] = useState<UniversityClass[]>(() =>
-    currentUser ? db.getTeacherClasses(currentUser.id) : []
-  );
+
+  const getCoursesForUser = () => {
+    if (!currentUser) return [];
+    if (currentUser.role === 'admin') {
+      return db.getClasses();
+    }
+    return db.getTeacherClasses(currentUser.id);
+  };
+
+  const [classes, setClasses] = useState<UniversityClass[]>(() => getCoursesForUser());
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
 
   // Edit / Modify Class Schedule & Details Modal State
@@ -54,9 +61,7 @@ export const TeacherClasses: React.FC<TeacherClassesProps> = ({
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
 
   const refreshClasses = () => {
-    if (currentUser) {
-      setClasses(db.getTeacherClasses(currentUser.id));
-    }
+    setClasses(getCoursesForUser());
   };
 
   const handleCopyCode = (code: string) => {
@@ -121,13 +126,31 @@ export const TeacherClasses: React.FC<TeacherClassesProps> = ({
           </p>
         </div>
 
-        <button
-          onClick={onOpenCreateClass}
-          className="inline-flex items-center gap-1.5 bg-purple-700 hover:bg-purple-800 text-white text-xs font-bold px-4 py-2.5 rounded-xl shadow-sm shadow-purple-200 transition-colors self-start sm:self-center"
-        >
-          <Plus className="w-4 h-4" />
-          <span>Create New Course</span>
-        </button>
+        <div className="flex items-center gap-2 self-start sm:self-center">
+          {classes.length > 0 && db.hasDummyData() && (
+            <button
+              onClick={() => {
+                if (confirm('Remove sample demo courses (CS201, MATH152, etc.) and start with an empty course catalog?')) {
+                  db.clearDummyData();
+                  refreshClasses();
+                }
+              }}
+              className="inline-flex items-center gap-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-semibold px-3 py-2.5 rounded-xl border border-rose-200 transition-colors"
+              title="Remove sample demo courses to add real courses"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              <span>Purge Demo Courses</span>
+            </button>
+          )}
+
+          <button
+            onClick={onOpenCreateClass}
+            className="inline-flex items-center gap-1.5 bg-purple-700 hover:bg-purple-800 text-white text-xs font-bold px-4 py-2.5 rounded-xl shadow-sm shadow-purple-200 transition-colors"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Create New Course</span>
+          </button>
+        </div>
       </div>
 
       {classes.length === 0 ? (
@@ -137,13 +160,25 @@ export const TeacherClasses: React.FC<TeacherClassesProps> = ({
           <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto">
             Get started by creating your first course. CampusHub will generate a unique join code for students.
           </p>
-          <button
-            onClick={onOpenCreateClass}
-            className="mt-4 inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold text-white bg-purple-700 hover:bg-purple-800 shadow-sm"
-          >
-            <Plus className="w-3.5 h-3.5" />
-            Create Course
-          </button>
+          <div className="mt-4 flex items-center justify-center gap-3">
+            <button
+              onClick={onOpenCreateClass}
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold text-white bg-purple-700 hover:bg-purple-800 shadow-sm"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              Create Real Course
+            </button>
+            <button
+              onClick={() => {
+                db.restoreDemoData();
+                refreshClasses();
+              }}
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200"
+            >
+              <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+              Load Sample Courses
+            </button>
+          </div>
         </div>
       ) : (
         <div className="space-y-4">

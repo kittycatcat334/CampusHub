@@ -34,13 +34,17 @@ export const TeacherAnnouncements: React.FC<TeacherAnnouncementsProps> = ({
   const { currentUser } = useAuth();
   if (!currentUser) return null;
 
-  const teacherClasses = db.getTeacherClasses(currentUser.id);
+  const isAdmin = currentUser.role === 'admin';
+  const teacherClasses = isAdmin ? db.getClasses() : db.getTeacherClasses(currentUser.id);
   const teacherClassIds = new Set(teacherClasses.map(c => c.id));
-  const classMap = new Map(teacherClasses.map(c => [c.id, c]));
+  const classMap = new Map(db.getClasses().map(c => [c.id, c]));
 
-  const [announcements, setAnnouncements] = useState<Announcement[]>(() =>
-    db.getAnnouncements().filter(a => teacherClassIds.has(a.classId))
-  );
+  const getAnnouncementsForUser = () => {
+    if (isAdmin) return db.getAnnouncements();
+    return db.getAnnouncements().filter(a => teacherClassIds.has(a.classId));
+  };
+
+  const [announcements, setAnnouncements] = useState<Announcement[]>(() => getAnnouncementsForUser());
 
   const [selectedClassId, setSelectedClassId] = useState<string>(selectedCourseId || 'all');
   const [priorityFilter, setPriorityFilter] = useState<'all' | 'urgent' | 'important' | 'normal'>('all');

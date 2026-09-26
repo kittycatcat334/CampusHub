@@ -265,7 +265,22 @@ export const StudentClasses: React.FC<StudentClassesProps> = ({
       </div>
 
       {/* Course Cards Grid */}
-      {displayedClasses.length === 0 ? (
+      {enrolledClasses.length === 0 ? (
+        <div className="bg-white p-12 rounded-2xl border border-slate-200 text-center">
+          <BookOpen className="w-12 h-12 text-slate-300 mx-auto mb-3" />
+          <h3 className="font-bold text-slate-800 text-base">You are not enrolled in any classes yet</h3>
+          <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto">
+            Join your first course using a code from your professor, or browse and enroll in available campus courses.
+          </p>
+          <button
+            onClick={onOpenJoinModal}
+            className="mt-4 inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 shadow-sm cursor-pointer"
+          >
+            <Plus className="w-4 h-4" />
+            Join or Browse Classes
+          </button>
+        </div>
+      ) : displayedClasses.length === 0 ? (
         <div className="bg-white p-12 rounded-2xl border border-slate-200 text-center">
           <BookOpen className="w-12 h-12 text-slate-300 mx-auto mb-3" />
           <h3 className="font-bold text-slate-800 text-base">No classes match your filter</h3>

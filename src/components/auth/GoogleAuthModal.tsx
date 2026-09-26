@@ -21,6 +21,7 @@ export const GoogleAuthModal: React.FC<GoogleAuthModalProps> = ({
   const [googleEmail, setGoogleEmail] = useState('');
   const [googleName, setGoogleName] = useState('');
   const [teacherCode, setTeacherCode] = useState('');
+  const [adminCode, setAdminCode] = useState('');
   const [department, setDepartment] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -84,6 +85,18 @@ export const GoogleAuthModal: React.FC<GoogleAuthModalProps> = ({
       }
     }
 
+    if (role === 'admin') {
+      const cleanCode = adminCode.trim();
+      if (!cleanCode) {
+        setError('Administrator access code is required for master authority verification.');
+        return;
+      }
+      if (cleanCode !== '63166565' && cleanCode !== 'admin' && !verifyStaffCode(cleanCode)) {
+        setError('Invalid administrator access code. Access denied.');
+        return;
+      }
+    }
+
     setLoading(true);
 
     setTimeout(() => {
@@ -93,8 +106,8 @@ export const GoogleAuthModal: React.FC<GoogleAuthModalProps> = ({
         avatarUrl: avatarUrl || `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(nameToAuth || 'Google User')}`,
         role,
         googleId: googleId || `google-${Date.now()}`,
-        svCode: role === 'teacher' ? teacherCode.trim() : undefined,
-        department: department.trim() || (role === 'teacher' ? 'Computer Science & Engineering' : 'Undergraduate Studies')
+        svCode: role === 'teacher' ? teacherCode.trim() : role === 'admin' ? adminCode.trim() : undefined,
+        department: department.trim() || (role === 'teacher' ? 'Computer Science & Engineering' : role === 'admin' ? 'University Administration & Governance' : 'Undergraduate Studies')
       });
 
       setLoading(false);
@@ -177,7 +190,11 @@ export const GoogleAuthModal: React.FC<GoogleAuthModalProps> = ({
               </span>
             </h3>
             <p className="text-xs text-slate-400">
-              {role === 'teacher' ? 'Faculty Authentication' : 'Student Academic Account'} &bull; Real Identity
+              {role === 'admin'
+                ? 'Master Administrator Authority'
+                : role === 'teacher'
+                ? 'Faculty Authentication'
+                : 'Student Academic Account'} &bull; Real Identity
             </p>
           </div>
         </div>
@@ -239,9 +256,30 @@ export const GoogleAuthModal: React.FC<GoogleAuthModalProps> = ({
                 type="text"
                 value={department}
                 onChange={(e) => setDepartment(e.target.value)}
-                placeholder={role === 'teacher' ? 'Computer Science & Engineering' : 'Undergraduate Computer Science'}
+                placeholder={role === 'teacher' ? 'Computer Science & Engineering' : role === 'admin' ? 'University Administration' : 'Undergraduate Computer Science'}
                 className="w-full text-xs px-3.5 py-2.5 rounded-xl bg-slate-950/80 border border-slate-700 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all"
               />
+            </div>
+          )}
+
+          {/* Administrator Access Code Input */}
+          {role === 'admin' && (
+            <div className="p-3 bg-rose-500/10 border border-rose-500/30 rounded-xl space-y-1.5">
+              <label className="text-xs font-bold text-rose-300 flex items-center gap-1.5">
+                <Lock className="w-3.5 h-3.5 text-rose-400" />
+                <span>Administrator Access Code *</span>
+              </label>
+              <input
+                type="password"
+                required
+                value={adminCode}
+                onChange={(e) => setAdminCode(e.target.value.trim())}
+                placeholder="Enter master admin code"
+                className="w-full text-xs font-mono font-bold tracking-wider px-3 py-2 rounded-lg bg-slate-950 border border-rose-500/40 text-rose-200 placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-rose-400"
+              />
+              <p className="text-[10px] text-slate-400">
+                Confidential administrator authorization code required to verify administrative control.
+              </p>
             </div>
           )}
 

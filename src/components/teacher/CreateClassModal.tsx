@@ -10,6 +10,7 @@ interface CreateClassModalProps {
 
 export const CreateClassModal: React.FC<CreateClassModalProps> = ({ onClose, onSuccess }) => {
   const { currentUser } = useAuth();
+  const teachers = db.getUsers().filter(u => u.role === 'teacher');
 
   const [code, setCode] = useState('');
   const [name, setName] = useState('');
@@ -18,6 +19,9 @@ export const CreateClassModal: React.FC<CreateClassModalProps> = ({ onClose, onS
   const [schedule, setSchedule] = useState('Mon & Wed 11:00 AM - 12:30 PM');
   const [room, setRoom] = useState('Science Hall 204');
   const [description, setDescription] = useState('');
+  const [teacherId, setTeacherId] = useState<string>(() =>
+    currentUser.role === 'teacher' ? currentUser.id : teachers[0]?.id || currentUser.id
+  );
   const [joinCode, setJoinCode] = useState(() => Math.random().toString(36).substring(2, 8).toUpperCase());
   const [success, setSuccess] = useState(false);
 
@@ -28,6 +32,8 @@ export const CreateClassModal: React.FC<CreateClassModalProps> = ({ onClose, onS
       return;
     }
 
+    const assignedTeacher = teachers.find(t => t.id === teacherId) || (teacherId === currentUser.id ? currentUser : teachers[0] || currentUser);
+
     db.createClass({
       code: code.trim().toUpperCase(),
       name: name.trim(),
@@ -36,9 +42,9 @@ export const CreateClassModal: React.FC<CreateClassModalProps> = ({ onClose, onS
       schedule: schedule.trim(),
       room: room.trim(),
       description: description.trim(),
-      teacherId: currentUser.id,
-      teacherName: currentUser.name,
-      teacherEmail: currentUser.email,
+      teacherId: assignedTeacher.id,
+      teacherName: assignedTeacher.name,
+      teacherEmail: assignedTeacher.email,
       color: 'indigo',
       joinCode: joinCode.trim().toUpperCase()
     });
@@ -166,6 +172,28 @@ export const CreateClassModal: React.FC<CreateClassModalProps> = ({ onClose, onS
               className="w-full text-xs p-3 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-600 leading-relaxed"
             />
           </div>
+
+          {currentUser.role === 'admin' && (
+            <div className="space-y-1">
+              <label className="block text-xs font-bold uppercase tracking-wider text-slate-600">
+                Assign Faculty Instructor
+              </label>
+              <select
+                value={teacherId}
+                onChange={(e) => setTeacherId(e.target.value)}
+                className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-600 font-medium"
+              >
+                {teachers.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.name} ({t.email}) &bull; {t.department || 'Faculty'}
+                  </option>
+                ))}
+                <option value={currentUser.id}>
+                  {currentUser.name} (Administrator / Self-Instructed)
+                </option>
+              </select>
+            </div>
+          )}
 
           <div className="p-3 bg-purple-50 rounded-xl border border-purple-200 flex items-center justify-between text-xs">
             <div>
