@@ -4,71 +4,53 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import { db, subscribeToDB, initDatabase } from './services/db';
 import { Assignment, Submission, UniversityClass } from './types';
 
-// Authentication screen
+// Authentication screen (Google Login + Regular Login)
 import { LoginScreen } from './components/auth/LoginScreen';
 
-// Layout components
-import { Navbar } from './components/layout/Navbar';
-import { Sidebar } from './components/layout/Sidebar';
+// Google Classroom Style Core Components
+import { ClassroomHeader } from './components/classroom/ClassroomHeader';
+import { ClassroomDrawer } from './components/classroom/ClassroomDrawer';
+import { ClassesHome } from './components/classroom/ClassesHome';
+import { ClassView } from './components/classroom/ClassView';
+import { TodoView } from './components/classroom/TodoView';
 
-// Student Views
-import { StudentDashboard } from './components/student/StudentDashboard';
-import { StudentDailySchedule } from './components/student/StudentDailySchedule';
-import { StudentAssignments } from './components/student/StudentAssignments';
-import { StudentClasses } from './components/student/StudentClasses';
-import { StudentAnnouncements } from './components/student/StudentAnnouncements';
-import { StudentResources } from './components/student/StudentResources';
+// Calendar and Admin
 import { StudentCalendar } from './components/student/StudentCalendar';
-import { AssignmentDetailModal } from './components/student/AssignmentDetailModal';
-import { JoinClassModal } from './components/student/JoinClassModal';
+import { AdminDashboard } from './components/admin/AdminDashboard';
 
-// Teacher Views
-import { TeacherDashboard } from './components/teacher/TeacherDashboard';
-import { TeacherClasses } from './components/teacher/TeacherClasses';
-import { TeacherSchedule } from './components/teacher/TeacherSchedule';
-import { TeacherAssignments } from './components/teacher/TeacherAssignments';
-import { TeacherAnnouncements } from './components/teacher/TeacherAnnouncements';
+// Modals for real student & teacher operations
+import { JoinClassModal } from './components/student/JoinClassModal';
 import { CreateClassModal } from './components/teacher/CreateClassModal';
 import { CreateAssignmentModal } from './components/teacher/CreateAssignmentModal';
-import { ScheduleProjectModal } from './components/teacher/ScheduleProjectModal';
 import { PostAnnouncementModal } from './components/teacher/PostAnnouncementModal';
 import { UploadResourceModal } from './components/teacher/UploadResourceModal';
+import { AssignmentDetailModal } from './components/student/AssignmentDetailModal';
 import { TeacherSubmissionsModal } from './components/teacher/TeacherSubmissionsModal';
-
-// Shared
 import { ProfileModal } from './components/profile/ProfileModal';
-
-// Admin Views
-import { AdminDashboard } from './components/admin/AdminDashboard';
-import { SetupClassroomsModal } from './components/admin/SetupClassroomsModal';
-import { AdminImpersonationBanner } from './components/admin/AdminImpersonationBanner';
-import { PrincipalControlWindow } from './components/principal/PrincipalControlWindow';
 
 // Initialize the database on first load
 initDatabase();
 
-function MainContent() {
-  const { currentUser, isStudent, isTeacher, isAdmin, isPrincipal, currentInstitution, isAuthenticated } = useAuth();
+function ClassroomApp() {
+  const { currentUser, isStudent, isTeacher, isAdmin, isAuthenticated } = useAuth();
 
-  // Navigation tab
-  const [currentTab, setCurrentTab] = useState<string>('dashboard');
-
-  // Selected Course Filter (null = All Courses)
-  const [selectedCourseId, setSelectedCourseId] = useState<string | null>(null);
+  // Navigation state
+  const [activeView, setActiveView] = useState<string>('classes');
+  const [activeClassId, setActiveClassId] = useState<string | null>(null);
+  const [classTab, setClassTab] = useState<'stream' | 'classwork' | 'people' | 'grades'>('stream');
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
 
   // Modals state
-  const [selectedAssignment, setSelectedAssignment] = useState<Assignment | null>(null);
-  const [isJoinClassOpen, setIsJoinClassOpen] = useState<boolean>(false);
-  const [isCreateClassOpen, setIsCreateClassOpen] = useState<boolean>(false);
-  const [isCreateAssignmentOpen, setIsCreateAssignmentOpen] = useState<boolean>(false);
+  const [isJoinClassOpen, setIsJoinClassOpen] = useState(false);
+  const [isCreateClassOpen, setIsCreateClassOpen] = useState(false);
+  const [isCreateAssignmentOpen, setIsCreateAssignmentOpen] = useState(false);
   const [createAssignmentClassId, setCreateAssignmentClassId] = useState<string | undefined>(undefined);
-  const [isScheduleProjectOpen, setIsScheduleProjectOpen] = useState<boolean>(false);
-  const [isPostAnnouncementOpen, setIsPostAnnouncementOpen] = useState<boolean>(false);
+  const [isPostAnnouncementOpen, setIsPostAnnouncementOpen] = useState(false);
   const [postAnnouncementClassId, setPostAnnouncementClassId] = useState<string | undefined>(undefined);
-  const [isUploadResourceOpen, setIsUploadResourceOpen] = useState<boolean>(false);
+  const [isUploadResourceOpen, setIsUploadResourceOpen] = useState(false);
   const [uploadResourceClassId, setUploadResourceClassId] = useState<string | undefined>(undefined);
-  const [isProfileOpen, setIsProfileOpen] = useState<boolean>(false);
-  const [isClassroomSetupOpen, setIsClassroomSetupOpen] = useState<boolean>(false);
+  const [selectedAssignment, setSelectedAssignment] = useState<Assignment | null>(null);
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
 
   // Teacher Grading Modal state
   const [gradingPayload, setGradingPayload] = useState<{
@@ -77,7 +59,7 @@ function MainContent() {
     course?: UniversityClass;
   } | null>(null);
 
-  // Trigger re-render whenever localStorage updates
+  // Re-render when local database changes
   const [, setTick] = useState(0);
   useEffect(() => {
     const unsubscribe = subscribeToDB(() => {
@@ -91,33 +73,26 @@ function MainContent() {
     return <LoginScreen />;
   }
 
-  // Compute live badges
-  const pendingWork = isStudent
-    ? db.getStudentAcademicWork(currentUser.id).totalActive
-    : 0;
+  // Active course lookup
+  const activeClass = activeClassId ? db.getClassById(activeClassId) || null : null;
 
-  const unreviewedCount = isTeacher
-    ? db.getSubmissions().filter((s) => {
-        const a = db.getAssignmentById(s.assignmentId);
-        if (!a) return false;
-        const c = db.getClassById(a.classId);
-        return c?.teacherId === currentUser.id && s.status === 'submitted';
-      }).length
-    : 0;
+  // Navigation router handler
+  const handleSelectView = (view: string, courseId?: string) => {
+    if (view === 'class-detail' && courseId) {
+      setActiveClassId(courseId);
+      setClassTab('stream');
+    } else if (view === 'classes') {
+      setActiveClassId(null);
+      setActiveView('classes');
+    } else {
+      setActiveClassId(null);
+      setActiveView(view);
+    }
+  };
 
-  // Handlers for quick creation modals
   const handleOpenCreateAssignment = (classId?: string) => {
     setCreateAssignmentClassId(classId);
     setIsCreateAssignmentOpen(true);
-  };
-
-  const handleOpenScheduleProject = () => {
-    setIsScheduleProjectOpen(true);
-  };
-
-  const handleOpenPostAnnouncement = (classId?: string) => {
-    setPostAnnouncementClassId(classId);
-    setIsPostAnnouncementOpen(true);
   };
 
   const handleOpenUploadResource = (classId?: string) => {
@@ -128,335 +103,257 @@ function MainContent() {
   const handleGradeSubmission = (
     submission: Submission,
     assignment: Assignment,
-    course?: UniversityClass
+    course: UniversityClass
   ) => {
     setGradingPayload({ submission, assignment, course });
   };
 
-  const handleTabSelect = (tab: string) => {
-    if (tab === 'profile') {
-      setIsProfileOpen(true);
-    } else {
-      setCurrentTab(tab);
-    }
-  };
-
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex flex-col text-slate-800 dark:text-slate-100 font-sans antialiased selection:bg-indigo-100 selection:text-indigo-900 transition-colors duration-200">
-      {/* Top Navbar */}
-      <Navbar
+    <div className="min-h-screen bg-slate-100/70 dark:bg-slate-950 flex flex-col text-slate-800 dark:text-slate-100 font-sans antialiased selection:bg-indigo-100 selection:text-indigo-900 transition-colors duration-200">
+      {/* Top Google Classroom Navigation Bar */}
+      <ClassroomHeader
+        onToggleDrawer={() => setIsDrawerOpen(prev => !prev)}
+        activeView={activeView}
+        onSelectView={handleSelectView}
+        activeClass={activeClass}
+        classTab={classTab}
+        onChangeClassTab={(tab) => setClassTab(tab)}
         onOpenJoinClass={() => setIsJoinClassOpen(true)}
         onOpenCreateClass={() => setIsCreateClassOpen(true)}
-        onOpenScheduleProject={handleOpenScheduleProject}
-        onOpenClassrooms={() => setIsClassroomSetupOpen(true)}
-        onNavigate={handleTabSelect}
-        selectedCourseId={selectedCourseId}
-        onSelectCourse={setSelectedCourseId}
+        onOpenProfile={() => setIsProfileOpen(true)}
       />
 
-      {/* Admin Impersonation & Master Control Banner */}
-      <AdminImpersonationBanner onOpenClassrooms={() => setIsClassroomSetupOpen(true)} />
+      {/* Slide-out Navigation Drawer */}
+      <ClassroomDrawer
+        isOpen={isDrawerOpen}
+        onClose={() => setIsDrawerOpen(false)}
+        activeView={activeView}
+        onSelectView={handleSelectView}
+        onOpenJoinClass={() => setIsJoinClassOpen(true)}
+        onOpenCreateClass={() => setIsCreateClassOpen(true)}
+      />
 
-      {/* Main Layout Body */}
-      <div className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 flex gap-6">
-        {/* Left Sidebar */}
-        <Sidebar
-          currentTab={currentTab}
-          onSelectTab={handleTabSelect}
-          onOpenClassrooms={() => setIsClassroomSetupOpen(true)}
-          pendingWorkCount={pendingWork}
-          unreviewedSubmissionCount={unreviewedCount}
-        />
-
-        {/* Main Content Area */}
-        <main className="flex-1 min-w-0">
-          {/* PRINCIPAL EXPERIENCE */}
-          {isPrincipal && (
-            <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto">
-              <PrincipalControlWindow
-                institution={currentInstitution}
-                isStandalone={true}
-                isOpen={true}
+      {/* Main Content Viewport */}
+      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        {activeClassId && activeClass ? (
+          /* INSIDE A CLASSROOM (Google Classroom: Stream, Classwork, People, Grades) */
+          <ClassView
+            course={activeClass}
+            activeTab={classTab}
+            onChangeTab={(tab) => setClassTab(tab)}
+            onOpenCreateAssignment={handleOpenCreateAssignment}
+            onOpenUploadResource={handleOpenUploadResource}
+            onSelectAssignment={(assignment) => setSelectedAssignment(assignment)}
+            onGradeSubmission={handleGradeSubmission}
+          />
+        ) : (
+          /* MAIN APPLICATION VIEWS */
+          <>
+            {activeView === 'classes' && (
+              <ClassesHome
+                onSelectClass={(courseId) => {
+                  setActiveClassId(courseId);
+                  setClassTab('stream');
+                }}
+                onOpenJoinClass={() => setIsJoinClassOpen(true)}
+                onOpenCreateClass={() => setIsCreateClassOpen(true)}
               />
-            </div>
-          )}
+            )}
 
-          {/* ADMIN EXPERIENCE */}
-          {isAdmin && (
-            <>
-              {(currentTab === 'dashboard' || currentTab === 'institutions') && (
-                <AdminDashboard
-                  onOpenClassrooms={() => setIsClassroomSetupOpen(true)}
-                  onNavigate={setCurrentTab}
-                  initialSubTab={currentTab === 'institutions' ? 'institutions' : undefined}
-                />
-              )}
+            {activeView === 'todo' && (
+              <TodoView
+                onSelectAssignment={(assignment) => setSelectedAssignment(assignment)}
+                onSelectClass={(courseId) => {
+                  setActiveClassId(courseId);
+                  setClassTab('stream');
+                }}
+              />
+            )}
 
-              {currentTab === 'classes' && (
-                <TeacherClasses
+            {activeView === 'calendar' && (
+              <StudentCalendar
+                onSelectAssignment={(assignment) => setSelectedAssignment(assignment)}
+                selectedCourseId={null}
+                onSelectCourse={() => {}}
+              />
+            )}
+
+            {activeView === 'admin' && isAdmin && (
+              <AdminDashboard
+                onOpenClassrooms={() => {}}
+                onNavigate={(v) => handleSelectView(v)}
+              />
+            )}
+
+            {/* Fallback to prevent white screens on any unrecognized view */}
+            {activeView !== 'classes' &&
+              activeView !== 'todo' &&
+              activeView !== 'calendar' &&
+              (activeView !== 'admin' || !isAdmin) && (
+                <ClassesHome
+                  onSelectClass={(courseId) => {
+                    setActiveClassId(courseId);
+                    setClassTab('stream');
+                  }}
+                  onOpenJoinClass={() => setIsJoinClassOpen(true)}
                   onOpenCreateClass={() => setIsCreateClassOpen(true)}
-                  onOpenCreateAssignment={handleOpenCreateAssignment}
-                  onOpenPostAnnouncement={handleOpenPostAnnouncement}
-                  onOpenUploadResource={handleOpenUploadResource}
                 />
-              )}
-
-              {currentTab === 'announcements' && (
-                <TeacherAnnouncements
-                  selectedCourseId={selectedCourseId}
-                  onSelectCourse={setSelectedCourseId}
-                />
-              )}
-            </>
-          )}
-
-          {/* STUDENT EXPERIENCE */}
-          {isStudent && (
-            <>
-              {currentTab === 'dashboard' && (
-                <StudentDashboard
-                  onSelectAssignment={(a) => setSelectedAssignment(a)}
-                  onOpenJoinModal={() => setIsJoinClassOpen(true)}
-                  onNavigate={setCurrentTab}
-                  selectedCourseId={selectedCourseId}
-                  onSelectCourse={setSelectedCourseId}
-                />
-              )}
-
-              {currentTab === 'schedule' && (
-                <StudentDailySchedule
-                  selectedCourseId={selectedCourseId}
-                  onSelectCourse={setSelectedCourseId}
-                  onNavigate={setCurrentTab}
-                />
-              )}
-
-              {currentTab === 'assignments' && (
-                <StudentAssignments
-                  onSelectAssignment={(a) => setSelectedAssignment(a)}
-                  selectedCourseId={selectedCourseId}
-                  onSelectCourse={setSelectedCourseId}
-                />
-              )}
-
-              {currentTab === 'classes' && (
-                <StudentClasses
-                  onOpenJoinModal={() => setIsJoinClassOpen(true)}
-                  onSelectAssignment={(a) => setSelectedAssignment(a)}
-                  selectedCourseId={selectedCourseId}
-                  onSelectCourse={setSelectedCourseId}
-                  onNavigate={setCurrentTab}
-                />
-              )}
-
-              {currentTab === 'calendar' && (
-                <StudentCalendar
-                  onSelectAssignment={(a) => setSelectedAssignment(a)}
-                  selectedCourseId={selectedCourseId}
-                  onSelectCourse={setSelectedCourseId}
-                />
-              )}
-
-              {currentTab === 'announcements' && (
-                <StudentAnnouncements
-                  selectedCourseId={selectedCourseId}
-                  onSelectCourse={setSelectedCourseId}
-                />
-              )}
-
-              {currentTab === 'resources' && (
-                <StudentResources
-                  selectedCourseId={selectedCourseId}
-                  onSelectCourse={setSelectedCourseId}
-                />
-              )}
-            </>
-          )}
-
-          {/* TEACHER EXPERIENCE */}
-          {isTeacher && (
-            <>
-              {currentTab === 'dashboard' && (
-                <TeacherDashboard
-                  onOpenCreateClass={() => setIsCreateClassOpen(true)}
-                  onOpenCreateAssignment={handleOpenCreateAssignment}
-                  onOpenScheduleProject={handleOpenScheduleProject}
-                  onOpenPostAnnouncement={handleOpenPostAnnouncement}
-                  onOpenUploadResource={handleOpenUploadResource}
-                  onGradeSubmission={handleGradeSubmission}
-                  onNavigate={setCurrentTab}
-                  selectedCourseId={selectedCourseId}
-                  onSelectCourse={setSelectedCourseId}
-                />
-              )}
-
-              {currentTab === 'schedule' && (
-                <TeacherSchedule onNavigate={setCurrentTab} />
-              )}
-
-              {currentTab === 'classes' && (
-                <TeacherClasses
-                  onOpenCreateClass={() => setIsCreateClassOpen(true)}
-                  onOpenCreateAssignment={handleOpenCreateAssignment}
-                  onOpenPostAnnouncement={handleOpenPostAnnouncement}
-                  onOpenUploadResource={handleOpenUploadResource}
-                />
-              )}
-
-              {currentTab === 'assignments' && (
-                <TeacherAssignments
-                  onOpenCreateAssignment={() => handleOpenCreateAssignment()}
-                  onOpenScheduleProject={handleOpenScheduleProject}
-                  onGradeSubmission={handleGradeSubmission}
-                  selectedCourseId={selectedCourseId}
-                  onSelectCourse={setSelectedCourseId}
-                />
-              )}
-
-              {currentTab === 'announcements' && (
-                <TeacherAnnouncements
-                  selectedCourseId={selectedCourseId}
-                  onSelectCourse={setSelectedCourseId}
-                />
-              )}
-
-              {currentTab === 'resources' && (
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h1 className="text-2xl font-extrabold text-slate-900 font-['Space_Grotesk']">
-                        Subject Resources & Repository
-                      </h1>
-                      <p className="text-xs text-slate-500 mt-1">
-                        Lecture notes, syllabus PDFs, and problem set files.
-                      </p>
-                    </div>
-                    <button
-                      onClick={() => handleOpenUploadResource()}
-                      className="px-4 py-2 bg-purple-700 hover:bg-purple-800 text-white text-xs font-bold rounded-xl shadow-xs"
-                    >
-                      + Upload Resource
-                    </button>
-                  </div>
-                  <StudentResources />
-                </div>
-              )}
-
-              {currentTab === 'calendar' && (
-                <StudentCalendar onSelectAssignment={(a) => setSelectedAssignment(a)} />
-              )}
-            </>
-          )}
-        </main>
-      </div>
+            )}
+          </>
+        )}
+      </main>
 
       {/* MODALS */}
-
-      {/* Student: Assignment Details & Submission Modal */}
-      {selectedAssignment && (
-        <AssignmentDetailModal
-          assignment={selectedAssignment}
-          onClose={() => setSelectedAssignment(null)}
-          onSubmissionSuccess={() => {
-            // Keep open or update
-          }}
-        />
-      )}
-
-      {/* Student: Join Class Modal */}
       {isJoinClassOpen && (
         <JoinClassModal
           onClose={() => setIsJoinClassOpen(false)}
-          onSuccess={() => setCurrentTab('classes')}
+          onSuccess={() => setIsJoinClassOpen(false)}
         />
       )}
 
-      {/* Teacher: Create Course Modal */}
       {isCreateClassOpen && (
         <CreateClassModal
           onClose={() => setIsCreateClassOpen(false)}
-          onSuccess={() => setCurrentTab('classes')}
+          onSuccess={() => setIsCreateClassOpen(false)}
         />
       )}
 
-      {/* Teacher: Create Assignment Modal */}
       {isCreateAssignmentOpen && (
         <CreateAssignmentModal
           initialClassId={createAssignmentClassId}
-          onClose={() => {
-            setIsCreateAssignmentOpen(false);
-            setCreateAssignmentClassId(undefined);
-          }}
-          onSuccess={() => setCurrentTab('assignments')}
+          onClose={() => setIsCreateAssignmentOpen(false)}
+          onSuccess={() => setIsCreateAssignmentOpen(false)}
         />
       )}
 
-      {/* Teacher: Schedule Deliverable / Project Modal */}
-      {isScheduleProjectOpen && (
-        <ScheduleProjectModal
-          onClose={() => setIsScheduleProjectOpen(false)}
-          onSuccess={() => setCurrentTab('assignments')}
-        />
-      )}
-
-      {/* Teacher: Post Announcement Modal */}
       {isPostAnnouncementOpen && (
         <PostAnnouncementModal
           initialClassId={postAnnouncementClassId}
-          onClose={() => {
-            setIsPostAnnouncementOpen(false);
-            setPostAnnouncementClassId(undefined);
-          }}
-          onSuccess={() => setCurrentTab('announcements')}
+          onClose={() => setIsPostAnnouncementOpen(false)}
+          onSuccess={() => setIsPostAnnouncementOpen(false)}
         />
       )}
 
-      {/* Teacher: Upload Resource Modal */}
       {isUploadResourceOpen && (
         <UploadResourceModal
           initialClassId={uploadResourceClassId}
-          onClose={() => {
-            setIsUploadResourceOpen(false);
-            setUploadResourceClassId(undefined);
-          }}
-          onSuccess={() => setCurrentTab('resources')}
+          onClose={() => setIsUploadResourceOpen(false)}
+          onSuccess={() => setIsUploadResourceOpen(false)}
         />
       )}
 
-      {/* Teacher: Review & Grade Submission Modal */}
+      {/* Assignment Detail / Submission Modal for Students */}
+      {selectedAssignment && isStudent && (
+        <AssignmentDetailModal
+          assignment={selectedAssignment}
+          onClose={() => setSelectedAssignment(null)}
+          onSubmissionSuccess={() => setSelectedAssignment(null)}
+        />
+      )}
+
+      {/* Assignment Review Modal for Teachers / Admins */}
+      {selectedAssignment && !isStudent && (
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-6 animate-in fade-in duration-150">
+          <div className="bg-white dark:bg-slate-850 w-full max-w-2xl rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 p-6 space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-slate-800">
+              <div>
+                <h3 className="font-bold text-base text-slate-900 dark:text-white">
+                  {selectedAssignment.title}
+                </h3>
+                <p className="text-xs text-slate-500">
+                  {db.getClassById(selectedAssignment.classId)?.name || 'Course'} &bull; {selectedAssignment.points} Points &bull; Due: {new Date(selectedAssignment.dueDate).toLocaleDateString()}
+                </p>
+              </div>
+              <button
+                onClick={() => setSelectedAssignment(null)}
+                className="p-1 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="text-xs text-slate-600 dark:text-slate-300">
+              <p className="font-semibold text-slate-700 dark:text-slate-200 mb-1">Assignment Instructions:</p>
+              <p className="whitespace-pre-line leading-relaxed">{selectedAssignment.description}</p>
+            </div>
+
+            {/* Submissions List */}
+            <div className="space-y-2 pt-2">
+              <h4 className="text-xs font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider">
+                Student Submissions ({db.getSubmissions().filter(s => s.assignmentId === selectedAssignment.id).length})
+              </h4>
+              {db.getSubmissions().filter(s => s.assignmentId === selectedAssignment.id).length === 0 ? (
+                <p className="text-xs text-slate-400 italic p-4 bg-slate-50 dark:bg-slate-900 rounded-xl text-center">
+                  No student submissions turned in yet.
+                </p>
+              ) : (
+                <div className="divide-y divide-slate-100 dark:divide-slate-800 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden">
+                  {db.getSubmissions().filter(s => s.assignmentId === selectedAssignment.id).map(sub => (
+                    <div key={sub.id} className="p-3 flex items-center justify-between gap-3 text-xs bg-white dark:bg-slate-850">
+                      <div>
+                        <p className="font-bold text-slate-800 dark:text-slate-200">{sub.studentName}</p>
+                        <p className="text-[11px] text-slate-500 line-clamp-1">{sub.content}</p>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <span className="font-mono font-bold text-slate-700 dark:text-slate-300">
+                          {sub.grade !== undefined ? `${sub.grade}/${selectedAssignment.points}` : 'Ungraded'}
+                        </span>
+                        <button
+                          onClick={() => {
+                            const c = db.getClassById(selectedAssignment.classId);
+                            setGradingPayload({ submission: sub, assignment: selectedAssignment, course: c });
+                            setSelectedAssignment(null);
+                          }}
+                          className="px-3 py-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-bold text-xs shadow-xs"
+                        >
+                          Grade
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="flex justify-end pt-3 border-t border-slate-100 dark:border-slate-800">
+              <button
+                onClick={() => setSelectedAssignment(null)}
+                className="px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-semibold hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Teacher Grading Review Modal */}
       {gradingPayload && (
         <TeacherSubmissionsModal
           submission={gradingPayload.submission}
           assignment={gradingPayload.assignment}
           course={gradingPayload.course}
           onClose={() => setGradingPayload(null)}
-          onGradedSuccess={() => {
-            // Updated
-          }}
+          onGradedSuccess={() => setGradingPayload(null)}
         />
       )}
 
-      {/* User Profile & Account Modal */}
+      {/* Account Profile Modal */}
       {isProfileOpen && (
         <ProfileModal onClose={() => setIsProfileOpen(false)} />
       )}
-
-      {/* Classroom Setup Window Modal */}
-      <SetupClassroomsModal
-        isOpen={isClassroomSetupOpen}
-        onClose={() => setIsClassroomSetupOpen(false)}
-      />
     </div>
   );
 }
 
-export default function App() {
+export function App() {
   return (
     <ThemeProvider>
       <AuthProvider>
-        <MainContent />
+        <ClassroomApp />
       </AuthProvider>
     </ThemeProvider>
   );
 }
 
+export default App;
