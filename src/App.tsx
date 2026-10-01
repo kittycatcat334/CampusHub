@@ -2,7 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { ThemeProvider } from './context/ThemeContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { db, subscribeToDB, initDatabase } from './services/db';
-import { Assignment, Submission, UniversityClass } from './types';
+import { Assignment, Submission, UniversityClass, DocumentItem } from './types';
+import { DocumentViewerModal } from './components/common/DocumentViewerModal';
+import { detectFileType } from './utils/documentViewerHelper';
+import { Table, FileText, Eye, Paperclip } from 'lucide-react';
 
 // Authentication screen (Google Login + Regular Login)
 import { LoginScreen } from './components/auth/LoginScreen';
@@ -51,6 +54,9 @@ function ClassroomApp() {
   const [uploadResourceClassId, setUploadResourceClassId] = useState<string | undefined>(undefined);
   const [selectedAssignment, setSelectedAssignment] = useState<Assignment | null>(null);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
+
+  // Document Viewer Modal State (opens PDF, Word, Excel files for students and teachers)
+  const [viewerDoc, setViewerDoc] = useState<DocumentItem | null>(null);
 
   // Teacher Grading Modal state
   const [gradingPayload, setGradingPayload] = useState<{
@@ -277,6 +283,57 @@ function ClassroomApp() {
               <p className="whitespace-pre-line leading-relaxed">{selectedAssignment.description}</p>
             </div>
 
+            {/* Handouts & Attached Guides */}
+            {selectedAssignment.attachments && selectedAssignment.attachments.length > 0 && (
+              <div className="p-3 bg-slate-50 dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 space-y-2">
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+                  Course Handouts & Study Guides ({selectedAssignment.attachments.length})
+                </span>
+                <div className="flex flex-wrap gap-2">
+                  {selectedAssignment.attachments.map((att, aIdx) => {
+                    const fType = att.type || detectFileType(att.name);
+                    const isExcel = fType === 'excel';
+                    const isWord = fType === 'word';
+
+                    return (
+                      <button
+                        key={aIdx}
+                        type="button"
+                        onClick={() => {
+                          const c = db.getClassById(selectedAssignment.classId);
+                          setViewerDoc({
+                            title: att.name.replace(/\.[^/.]+$/, '').replace(/[_-]/g, ' '),
+                            fileName: att.name,
+                            fileType: fType,
+                            fileSize: att.size || '320 KB',
+                            fileData: att.fileData,
+                            authorName: c?.teacherName || currentUser.name,
+                            authorRole: 'teacher',
+                            courseName: c?.name,
+                            courseCode: c?.code,
+                            uploadedAt: selectedAssignment.createdAt
+                          });
+                        }}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-850 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 text-xs font-semibold text-slate-800 dark:text-slate-200 transition-colors cursor-pointer group"
+                      >
+                        {isExcel ? (
+                          <Table className="w-3.5 h-3.5 text-emerald-600" />
+                        ) : isWord ? (
+                          <FileText className="w-3.5 h-3.5 text-blue-600" />
+                        ) : (
+                          <FileText className="w-3.5 h-3.5 text-rose-600" />
+                        )}
+                        <span className="group-hover:text-indigo-600 dark:group-hover:text-indigo-400">
+                          {att.name}
+                        </span>
+                        <Eye className="w-3 h-3 text-slate-400 group-hover:text-indigo-600" />
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
             {/* Submissions List */}
             <div className="space-y-2 pt-2">
               <h4 className="text-xs font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider">
@@ -288,29 +345,68 @@ function ClassroomApp() {
                 </p>
               ) : (
                 <div className="divide-y divide-slate-100 dark:divide-slate-800 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden">
-                  {db.getSubmissions().filter(s => s.assignmentId === selectedAssignment.id).map(sub => (
-                    <div key={sub.id} className="p-3 flex items-center justify-between gap-3 text-xs bg-white dark:bg-slate-850">
-                      <div>
-                        <p className="font-bold text-slate-800 dark:text-slate-200">{sub.studentName}</p>
-                        <p className="text-[11px] text-slate-500 line-clamp-1">{sub.content}</p>
+                  {db.getSubmissions().filter(s => s.assignmentId === selectedAssignment.id).map(sub => {
+                    const fType = sub.fileType || detectFileType(sub.content);
+                    const isExcel = fType === 'excel';
+                    const isWord = fType === 'word';
+
+                    return (
+                      <div key={sub.id} className="p-3 flex items-center justify-between gap-3 text-xs bg-white dark:bg-slate-850">
+                        <div className="min-w-0">
+                          <p className="font-bold text-slate-800 dark:text-slate-200">{sub.studentName}</p>
+                          <p className="text-[11px] text-slate-500 font-mono truncate">{sub.content}</p>
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0">
+                          <span className="font-mono font-bold text-slate-700 dark:text-slate-300 mr-1">
+                            {sub.grade !== undefined ? `${sub.grade}/${selectedAssignment.points}` : 'Ungraded'}
+                          </span>
+
+                          {sub.submissionType === 'file' && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const c = db.getClassById(selectedAssignment.classId);
+                                setViewerDoc({
+                                  title: `${selectedAssignment.title} - ${sub.studentName}'s Submission`,
+                                  fileName: sub.content,
+                                  fileType: fType,
+                                  fileSize: sub.fileSize || '380 KB',
+                                  fileData: sub.fileData,
+                                  authorName: sub.studentName,
+                                  authorRole: 'student',
+                                  courseName: c?.name,
+                                  courseCode: c?.code,
+                                  uploadedAt: sub.submittedAt
+                                });
+                              }}
+                              className="inline-flex items-center gap-1 px-2.5 py-1 bg-purple-50 dark:bg-purple-950/50 hover:bg-purple-100 dark:hover:bg-purple-900/60 text-purple-700 dark:text-purple-300 rounded-lg font-bold text-xs border border-purple-200 dark:border-purple-800 cursor-pointer transition-colors"
+                              title="Open student document"
+                            >
+                              {isExcel ? (
+                                <Table className="w-3.5 h-3.5 text-emerald-600" />
+                              ) : isWord ? (
+                                <FileText className="w-3.5 h-3.5 text-blue-600" />
+                              ) : (
+                                <FileText className="w-3.5 h-3.5 text-rose-600" />
+                              )}
+                              <span>Open File</span>
+                            </button>
+                          )}
+
+                          <button
+                            onClick={() => {
+                              const c = db.getClassById(selectedAssignment.classId);
+                              setGradingPayload({ submission: sub, assignment: selectedAssignment, course: c });
+                              setSelectedAssignment(null);
+                            }}
+                            className="px-3 py-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-bold text-xs shadow-xs cursor-pointer"
+                          >
+                            Grade
+                          </button>
+                        </div>
                       </div>
-                      <div className="flex items-center gap-3">
-                        <span className="font-mono font-bold text-slate-700 dark:text-slate-300">
-                          {sub.grade !== undefined ? `${sub.grade}/${selectedAssignment.points}` : 'Ungraded'}
-                        </span>
-                        <button
-                          onClick={() => {
-                            const c = db.getClassById(selectedAssignment.classId);
-                            setGradingPayload({ submission: sub, assignment: selectedAssignment, course: c });
-                            setSelectedAssignment(null);
-                          }}
-                          className="px-3 py-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-bold text-xs shadow-xs"
-                        >
-                          Grade
-                        </button>
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </div>
@@ -335,6 +431,14 @@ function ClassroomApp() {
           course={gradingPayload.course}
           onClose={() => setGradingPayload(null)}
           onGradedSuccess={() => setGradingPayload(null)}
+        />
+      )}
+
+      {/* Document Viewer Modal for reading guides, handouts, PDFs, Word & Excel files */}
+      {viewerDoc && (
+        <DocumentViewerModal
+          document={viewerDoc}
+          onClose={() => setViewerDoc(null)}
         />
       )}
 

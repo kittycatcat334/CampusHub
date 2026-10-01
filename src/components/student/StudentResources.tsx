@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { db } from '../../services/db';
-import { ClassResource, ResourceCategory, UniversityClass } from '../../types';
+import { ClassResource, ResourceCategory, UniversityClass, DocumentItem } from '../../types';
+import { DocumentViewerModal } from '../common/DocumentViewerModal';
+import { detectFileType } from '../../utils/documentViewerHelper';
 import {
   FolderArchive,
   Search,
@@ -23,7 +25,8 @@ import {
   CheckCircle2,
   Copy,
   Maximize2,
-  Trash2
+  Trash2,
+  Table
 } from 'lucide-react';
 
 interface StudentResourcesProps {
@@ -57,10 +60,27 @@ export const StudentResources: React.FC<StudentResourcesProps> = ({
   const [activeSubjectId, setActiveSubjectId] = useState<string>(selectedCourseId || 'all');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
-
-  // "New Window" Document Viewer Modal State
-  const [previewResource, setPreviewResource] = useState<ClassResource | null>(null);
   const [copiedUrl, setCopiedUrl] = useState(false);
+
+  // Document Viewer Modal State
+  const [viewerDoc, setViewerDoc] = useState<DocumentItem | null>(null);
+
+  const handleOpenResource = (res: ClassResource) => {
+    const fType = res.fileType === 'excel' ? 'excel' : res.fileType === 'word' || res.fileType === 'document' ? 'word' : 'pdf';
+    setViewerDoc({
+      title: res.title,
+      fileName: res.fileName || `${res.title}.${fType === 'excel' ? 'xlsx' : fType === 'word' ? 'docx' : 'pdf'}`,
+      fileType: fType,
+      fileSize: res.fileSize || '340 KB',
+      fileData: res.fileData,
+      authorName: res.teacherName || 'Faculty Instructor',
+      authorRole: 'teacher',
+      courseName: res.className,
+      courseCode: res.classCode,
+      uploadedAt: res.uploadedAt,
+      description: res.description
+    });
+  };
 
   useEffect(() => {
     if (selectedCourseId) {
@@ -329,7 +349,7 @@ export const StudentResources: React.FC<StudentResourcesProps> = ({
                   {subjectFiltered.map(res => (
                     <div
                       key={res.id}
-                      onClick={() => setPreviewResource(res)}
+                      onClick={() => handleOpenResource(res)}
                       className="group p-4 rounded-xl border border-slate-200 hover:border-indigo-400 hover:shadow-xs transition-all cursor-pointer bg-slate-50/40 hover:bg-white flex flex-col justify-between space-y-3"
                     >
                       <div className="space-y-2">
@@ -420,7 +440,7 @@ export const StudentResources: React.FC<StudentResourcesProps> = ({
             {filtered.map(res => (
               <div
                 key={res.id}
-                onClick={() => setPreviewResource(res)}
+                onClick={() => handleOpenResource(res)}
                 className="group p-5 rounded-2xl border border-slate-200 hover:border-indigo-400 hover:shadow-md transition-all cursor-pointer bg-white flex flex-col justify-between space-y-4"
               >
                 <div className="space-y-2.5">
@@ -488,129 +508,12 @@ export const StudentResources: React.FC<StudentResourcesProps> = ({
         </div>
       )}
 
-      {/* DEDICATED RESOURCE WINDOW / PREVIEW MODAL */}
-      {previewResource && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs overflow-y-auto">
-          <div className="bg-white w-full max-w-3xl rounded-2xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[90vh]">
-            {/* Modal Window Top Header */}
-            <div className="p-6 bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white relative">
-              <button
-                onClick={() => setPreviewResource(null)}
-                className="absolute top-4 right-4 p-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white transition-colors"
-                title="Close Window"
-              >
-                <X className="w-5 h-5" />
-              </button>
-
-              <div className="flex items-center gap-2 mb-2">
-                <span className="text-xs font-black px-2.5 py-0.5 rounded bg-indigo-500/40 text-indigo-200 border border-indigo-400/40">
-                  {previewResource.classCode}
-                </span>
-                <span className="text-xs font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-white/10 text-amber-300">
-                  {previewResource.category}
-                </span>
-                {previewResource.fileSize && (
-                  <span className="text-xs text-slate-300">• {previewResource.fileSize}</span>
-                )}
-              </div>
-
-              <h2 className="text-lg sm:text-xl font-black text-white tracking-tight">
-                {previewResource.title}
-              </h2>
-              <p className="text-xs text-slate-300 mt-1">
-                Course: {previewResource.className} • Instructor: {previewResource.teacherName || 'Faculty'}
-              </p>
-            </div>
-
-            {/* Modal Body: Document Preview & Details */}
-            <div className="p-6 overflow-y-auto flex-1 space-y-5">
-              {previewResource.description && (
-                <div>
-                  <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">
-                    Document Overview
-                  </h4>
-                  <p className="text-xs text-slate-700 leading-relaxed bg-slate-50 p-3 rounded-xl border border-slate-100">
-                    {previewResource.description}
-                  </p>
-                </div>
-              )}
-
-              {/* Content Preview Block */}
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
-                    <FileText className="w-3.5 h-3.5 text-indigo-600" />
-                    Document Content Preview
-                  </h4>
-                  <span className="text-[10px] text-slate-400 font-mono">
-                    Type: {previewResource.fileType.toUpperCase()}
-                  </span>
-                </div>
-
-                <div className="bg-slate-900 text-slate-100 p-4 rounded-xl font-mono text-xs overflow-x-auto whitespace-pre-wrap leading-relaxed border border-slate-800 shadow-inner max-h-72">
-                  {previewResource.contentPreview ||
-                    `// ${previewResource.title}\n// Department of Computer Science & Engineering\n// Verified official coursework material\n\n[Full file available for download or external web viewing via the actions below]`}
-                </div>
-              </div>
-
-              {/* File Meta Table */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs bg-slate-50 p-3 rounded-xl border border-slate-100">
-                <div>
-                  <span className="text-[10px] text-slate-400 font-bold block">CATEGORY</span>
-                  <span className="font-semibold text-slate-800">{previewResource.category}</span>
-                </div>
-                <div>
-                  <span className="text-[10px] text-slate-400 font-bold block">TOPIC</span>
-                  <span className="font-semibold text-slate-800">{previewResource.topic || 'General'}</span>
-                </div>
-                <div>
-                  <span className="text-[10px] text-slate-400 font-bold block">UPLOAD DATE</span>
-                  <span className="font-semibold text-slate-800">
-                    {new Date(previewResource.uploadedAt).toLocaleDateString()}
-                  </span>
-                </div>
-                <div>
-                  <span className="text-[10px] text-slate-400 font-bold block">FORMAT</span>
-                  <span className="font-semibold text-slate-800 uppercase">{previewResource.fileType}</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Modal Action Footer */}
-            <div className="p-4 bg-slate-50 border-t border-slate-200 flex flex-wrap items-center justify-between gap-3">
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => handleCopyLink(previewResource.url)}
-                  className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-100 text-slate-700 text-xs font-bold transition-colors"
-                >
-                  {copiedUrl ? <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5 text-slate-400" />}
-                  <span>{copiedUrl ? 'URL Copied!' : 'Copy Link'}</span>
-                </button>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => setPreviewResource(null)}
-                  className="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs font-bold rounded-xl transition-colors"
-                >
-                  Close Window
-                </button>
-
-                <a
-                  href={previewResource.url}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="inline-flex items-center gap-1.5 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl shadow-xs transition-colors"
-                >
-                  <ExternalLink className="w-3.5 h-3.5" />
-                  <span>Open Full Resource</span>
-                </a>
-              </div>
-            </div>
-          </div>
-        </div>
+      {/* Dedicated Academic Document Viewer Modal */}
+      {viewerDoc && (
+        <DocumentViewerModal
+          document={viewerDoc}
+          onClose={() => setViewerDoc(null)}
+        />
       )}
     </div>
   );

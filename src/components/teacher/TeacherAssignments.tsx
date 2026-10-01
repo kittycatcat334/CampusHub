@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { db } from '../../services/db';
-import { Assignment, Submission, UniversityClass } from '../../types';
+import { Assignment, Submission, UniversityClass, DocumentItem } from '../../types';
+import { DocumentViewerModal } from '../common/DocumentViewerModal';
+import { detectFileType, downloadDocumentFile } from '../../utils/documentViewerHelper';
 import {
   FileCheck2,
   Plus,
@@ -18,7 +20,12 @@ import {
   Trash2,
   X,
   Sparkles,
-  CalendarClock
+  CalendarClock,
+  FileText,
+  Table,
+  Eye,
+  Download,
+  Paperclip
 } from 'lucide-react';
 
 interface TeacherAssignmentsProps {
@@ -55,6 +62,9 @@ export const TeacherAssignments: React.FC<TeacherAssignmentsProps> = ({
   const [selectedClassId, setSelectedClassId] = useState<string>(selectedCourseId || 'all');
   const [searchQuery, setSearchQuery] = useState('');
   const [expandedAssignmentId, setExpandedAssignmentId] = useState<string | null>(null);
+
+  // Document Viewer Modal State (allows teachers to open PDF, Word, Excel files)
+  const [viewerDoc, setViewerDoc] = useState<DocumentItem | null>(null);
 
   // Edit Assignment Dates & Details Modal State
   const [editingAssignment, setEditingAssignment] = useState<Assignment | null>(null);
@@ -259,6 +269,74 @@ export const TeacherAssignments: React.FC<TeacherAssignmentsProps> = ({
 
                     <h3 className="font-bold text-base text-slate-900">{assignment.title}</h3>
                     <p className="text-xs text-slate-500 line-clamp-2">{assignment.description}</p>
+
+                    {/* Teacher Attached Guides / Handouts / Templates */}
+                    {assignment.attachments && assignment.attachments.length > 0 && (
+                      <div className="flex flex-wrap items-center gap-1.5 pt-2">
+                        <span className="text-[10px] font-bold text-purple-700 uppercase tracking-wider flex items-center gap-1 mr-1">
+                          <Paperclip className="w-3 h-3" /> Handouts ({assignment.attachments.length}):
+                        </span>
+                        {assignment.attachments.map((att, attIdx) => {
+                          const fType = att.type || detectFileType(att.name);
+                          const isExcel = fType === 'excel';
+                          const isWord = fType === 'word';
+
+                          return (
+                            <div
+                              key={attIdx}
+                              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-semibold"
+                            >
+                              {isExcel ? (
+                                <Table className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                              ) : isWord ? (
+                                <FileText className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+                              ) : (
+                                <FileText className="w-3.5 h-3.5 text-rose-600 shrink-0" />
+                              )}
+                              <span className="font-mono text-slate-800 dark:text-slate-200 truncate max-w-[120px]">
+                                {att.name}
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setViewerDoc({
+                                    title: att.name,
+                                    fileName: att.name,
+                                    fileType: fType,
+                                    fileSize: att.size || '320 KB',
+                                    fileData: att.fileData,
+                                    authorName: currentUser.name,
+                                    authorRole: 'teacher',
+                                    courseName: course?.name,
+                                    courseCode: course?.code,
+                                    uploadedAt: assignment.createdAt
+                                  })
+                                }
+                                className="ml-1 text-purple-700 hover:text-purple-900 dark:text-purple-400 font-bold hover:underline cursor-pointer"
+                                title="Open & Preview Guide"
+                              >
+                                View
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  downloadDocumentFile({
+                                    title: att.name,
+                                    fileName: att.name,
+                                    fileType: fType,
+                                    fileData: att.fileData
+                                  })
+                                }
+                                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                                title="Download"
+                              >
+                                <Download className="w-3 h-3" />
+                              </button>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
                   </div>
 
                   <div className="flex flex-wrap sm:flex-nowrap items-center gap-3 shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-100">
@@ -339,7 +417,7 @@ export const TeacherAssignments: React.FC<TeacherAssignmentsProps> = ({
                             <tr>
                               <th className="py-2.5 px-3">Student Name</th>
                               <th className="py-2.5 px-3">Date Submitted</th>
-                              <th className="py-2.5 px-3">File / Link</th>
+                              <th className="py-2.5 px-3">Submitted File / Work</th>
                               <th className="py-2.5 px-3">Status / Grade</th>
                               <th className="py-2.5 px-3 text-right">Action</th>
                             </tr>
@@ -347,6 +425,11 @@ export const TeacherAssignments: React.FC<TeacherAssignmentsProps> = ({
                           <tbody className="divide-y divide-slate-100">
                             {classSubmissions.map((sub) => {
                               const isRev = sub.status === 'reviewed';
+                              const fType = sub.fileType || detectFileType(sub.content);
+                              const isFile = sub.submissionType === 'file';
+                              const isExcel = fType === 'excel';
+                              const isWord = fType === 'word';
+
                               return (
                                 <tr key={sub.id} className="hover:bg-slate-50/50">
                                   <td className="py-3 px-3 font-semibold text-slate-800">
@@ -355,8 +438,35 @@ export const TeacherAssignments: React.FC<TeacherAssignmentsProps> = ({
                                   <td className="py-3 px-3 text-slate-500">
                                     {new Date(sub.submittedAt).toLocaleDateString()}
                                   </td>
-                                  <td className="py-3 px-3 font-mono text-[11px] text-slate-600 truncate max-w-[140px]">
-                                    {sub.content}
+                                  <td className="py-3 px-3">
+                                    {isFile ? (
+                                      <div className="flex items-center gap-2">
+                                        <div
+                                          className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 shadow-2xs ${
+                                            isExcel
+                                              ? 'bg-emerald-600 text-white'
+                                              : isWord
+                                              ? 'bg-blue-600 text-white'
+                                              : 'bg-rose-600 text-white'
+                                          }`}
+                                        >
+                                          {isExcel ? <Table className="w-3.5 h-3.5" /> : <FileText className="w-3.5 h-3.5" />}
+                                        </div>
+                                        <div className="min-w-0">
+                                          <p className="font-mono text-[11px] font-bold text-slate-800 truncate max-w-[160px]">
+                                            {sub.content}
+                                          </p>
+                                          <p className="text-[10px] text-slate-400">
+                                            {isExcel ? 'Excel (.xlsx)' : isWord ? 'Word (.docx)' : 'PDF (.pdf)'}
+                                            {sub.fileSize && ` • ${sub.fileSize}`}
+                                          </p>
+                                        </div>
+                                      </div>
+                                    ) : (
+                                      <span className="font-mono text-[11px] text-slate-600 truncate max-w-[160px] block">
+                                        {sub.content}
+                                      </span>
+                                    )}
                                   </td>
                                   <td className="py-3 px-3">
                                     {isRev ? (
@@ -370,12 +480,39 @@ export const TeacherAssignments: React.FC<TeacherAssignmentsProps> = ({
                                     )}
                                   </td>
                                   <td className="py-3 px-3 text-right">
-                                    <button
-                                      onClick={() => onGradeSubmission(sub, assignment, course)}
-                                      className="text-xs font-bold text-purple-700 hover:text-purple-900 px-2.5 py-1 rounded-lg border border-purple-200 hover:bg-purple-50"
-                                    >
-                                      {isRev ? 'Edit Grade' : 'Grade'}
-                                    </button>
+                                    <div className="inline-flex items-center gap-1.5 justify-end">
+                                      {isFile && (
+                                        <button
+                                          type="button"
+                                          onClick={() =>
+                                            setViewerDoc({
+                                              title: `${assignment.title} - ${sub.studentName}'s Submission`,
+                                              fileName: sub.content,
+                                              fileType: fType,
+                                              fileSize: sub.fileSize || '380 KB',
+                                              fileData: sub.fileData,
+                                              authorName: sub.studentName,
+                                              authorRole: 'student',
+                                              courseName: course?.name,
+                                              courseCode: course?.code,
+                                              uploadedAt: sub.submittedAt
+                                            })
+                                          }
+                                          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-purple-50 hover:bg-purple-100 text-purple-700 font-bold text-xs border border-purple-200 cursor-pointer transition-colors"
+                                          title="Open and preview student submitted document"
+                                        >
+                                          <Eye className="w-3.5 h-3.5" />
+                                          <span>Open File</span>
+                                        </button>
+                                      )}
+
+                                      <button
+                                        onClick={() => onGradeSubmission(sub, assignment, course)}
+                                        className="text-xs font-bold text-purple-700 hover:text-purple-900 px-2.5 py-1 rounded-lg border border-purple-200 hover:bg-purple-50 cursor-pointer"
+                                      >
+                                        {isRev ? 'Edit Grade' : 'Grade'}
+                                      </button>
+                                    </div>
                                   </td>
                                 </tr>
                               );
@@ -562,6 +699,14 @@ export const TeacherAssignments: React.FC<TeacherAssignmentsProps> = ({
             </form>
           </div>
         </div>
+      )}
+
+      {/* Document Viewer Modal for reading student submissions (PDF, Word, Excel) and teacher guides */}
+      {viewerDoc && (
+        <DocumentViewerModal
+          document={viewerDoc}
+          onClose={() => setViewerDoc(null)}
+        />
       )}
     </div>
   );

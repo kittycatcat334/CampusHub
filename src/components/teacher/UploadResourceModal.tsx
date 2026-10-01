@@ -2,7 +2,17 @@ import React, { useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { db } from '../../services/db';
 import { ClassResource, ResourceCategory } from '../../types';
-import { X, FolderArchive, CheckCircle2 } from 'lucide-react';
+import { detectFileType } from '../../utils/documentViewerHelper';
+import {
+  X,
+  FolderArchive,
+  CheckCircle2,
+  Upload,
+  FileText,
+  Table,
+  Sparkles,
+  Paperclip
+} from 'lucide-react';
 
 interface UploadResourceModalProps {
   onClose: () => void;
@@ -23,9 +33,47 @@ export const UploadResourceModal: React.FC<UploadResourceModalProps> = ({
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState<ResourceCategory>('Lecture Notes');
   const [fileType, setFileType] = useState<ClassResource['fileType']>('pdf');
-  const [url, setUrl] = useState('https://example.edu/course_materials/download');
-  const [fileSize, setFileSize] = useState('2.4 MB');
+  const [fileName, setFileName] = useState('');
+  const [fileSize, setFileSize] = useState('380 KB');
+  const [fileData, setFileData] = useState<string | undefined>(undefined);
   const [success, setSuccess] = useState(false);
+
+  const handleSelectSampleGuide = (guide: {
+    title: string;
+    description: string;
+    category: ResourceCategory;
+    fileType: 'pdf' | 'word' | 'excel';
+    fileName: string;
+    fileSize: string;
+  }) => {
+    setTitle(guide.title);
+    setDescription(guide.description);
+    setCategory(guide.category);
+    setFileType(guide.fileType);
+    setFileName(guide.fileName);
+    setFileSize(guide.fileSize);
+    setFileData(undefined);
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      const detected = detectFileType(file.name, file.type);
+      setFileName(file.name);
+      setFileSize(`${(file.size / 1024).toFixed(1)} KB`);
+      setFileType(detected === 'excel' ? 'excel' : detected === 'word' ? 'word' : 'pdf');
+
+      if (!title.trim()) {
+        setTitle(file.name.replace(/\.[^/.]+$/, '').replace(/[_-]/g, ' '));
+      }
+
+      const reader = new FileReader();
+      reader.onload = () => {
+        setFileData(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -49,8 +97,10 @@ export const UploadResourceModal: React.FC<UploadResourceModalProps> = ({
       description: description.trim(),
       category,
       fileType,
-      url: url.trim(),
-      fileSize: fileSize.trim()
+      fileName: fileName.trim() || `${title.trim()}.${fileType === 'excel' ? 'xlsx' : fileType === 'word' ? 'docx' : 'pdf'}`,
+      url: '#',
+      fileSize: fileSize.trim(),
+      fileData
     });
 
     setSuccess(true);
@@ -71,7 +121,7 @@ export const UploadResourceModal: React.FC<UploadResourceModalProps> = ({
             <div className="w-8 h-8 rounded-lg bg-purple-100 text-purple-700 flex items-center justify-center">
               <FolderArchive className="w-4 h-4" />
             </div>
-            <h3 className="font-bold text-slate-900 text-base">Upload Course Resource</h3>
+            <h3 className="font-bold text-slate-900 text-base">Upload Course Guide & Material</h3>
           </div>
           <button
             onClick={onClose}
@@ -82,6 +132,90 @@ export const UploadResourceModal: React.FC<UploadResourceModalProps> = ({
         </div>
 
         <form onSubmit={handleSubmit} className="p-5 sm:p-6 space-y-4 overflow-y-auto">
+          {/* Quick-select Pre-made Guides */}
+          <div className="space-y-1.5 p-3 bg-purple-50/60 rounded-xl border border-purple-100">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-purple-900 flex items-center gap-1">
+                <Sparkles className="w-3.5 h-3.5 text-purple-600" />
+                Quick-Select Course Guide Template
+              </span>
+              <span className="text-[10px] text-purple-600 font-medium">1-Click Fill</span>
+            </div>
+            <div className="grid grid-cols-2 gap-1.5 text-xs">
+              <button
+                type="button"
+                onClick={() =>
+                  handleSelectSampleGuide({
+                    title: 'Official Course Syllabus & Academic Policies',
+                    description: 'Comprehensive course overview, grading scale, office hours, and academic integrity policies.',
+                    category: 'Syllabus',
+                    fileType: 'pdf',
+                    fileName: 'Official_Course_Syllabus.pdf',
+                    fileSize: '340 KB'
+                  })
+                }
+                className="p-2 rounded-lg bg-white border border-purple-200 hover:border-purple-400 text-left font-semibold text-slate-800 text-[11px] flex items-center gap-1.5 cursor-pointer"
+              >
+                <FileText className="w-3.5 h-3.5 text-rose-500 shrink-0" />
+                <span className="truncate">Syllabus Guide (PDF)</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() =>
+                  handleSelectSampleGuide({
+                    title: 'Project Methodology & Grading Rubric',
+                    description: 'Formal architectural requirements, evaluation rubrics, and submission packaging guidelines.',
+                    category: 'Assignments',
+                    fileType: 'word',
+                    fileName: 'Project_Rubric_Specifications.docx',
+                    fileSize: '380 KB'
+                  })
+                }
+                className="p-2 rounded-lg bg-white border border-purple-200 hover:border-purple-400 text-left font-semibold text-slate-800 text-[11px] flex items-center gap-1.5 cursor-pointer"
+              >
+                <FileText className="w-3.5 h-3.5 text-blue-500 shrink-0" />
+                <span className="truncate">Rubric Spec (Word)</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() =>
+                  handleSelectSampleGuide({
+                    title: 'Grading Criteria & Statistical Weighting Model',
+                    description: 'Course grade calculator, weighting breakdowns, and cohort statistical distribution formulas.',
+                    category: 'Exam Prep',
+                    fileType: 'excel',
+                    fileName: 'Grade_Weighting_Model.xlsx',
+                    fileSize: '195 KB'
+                  })
+                }
+                className="p-2 rounded-lg bg-white border border-purple-200 hover:border-purple-400 text-left font-semibold text-slate-800 text-[11px] flex items-center gap-1.5 cursor-pointer"
+              >
+                <Table className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+                <span className="truncate">Grading Model (Excel)</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() =>
+                  handleSelectSampleGuide({
+                    title: 'Laboratory Protocols & Equipment Safety Guide',
+                    description: 'Safety protocols, experimental circuit guidelines, and benchtop equipment operating procedures.',
+                    category: 'Readings',
+                    fileType: 'pdf',
+                    fileName: 'Lab_Protocols_Manual.pdf',
+                    fileSize: '410 KB'
+                  })
+                }
+                className="p-2 rounded-lg bg-white border border-purple-200 hover:border-purple-400 text-left font-semibold text-slate-800 text-[11px] flex items-center gap-1.5 cursor-pointer"
+              >
+                <FileText className="w-3.5 h-3.5 text-rose-500 shrink-0" />
+                <span className="truncate">Safety Guide (PDF)</span>
+              </button>
+            </div>
+          </div>
+
           <div className="space-y-1">
             <label className="block text-xs font-bold uppercase tracking-wider text-slate-600">
               Select Course *
@@ -108,7 +242,7 @@ export const UploadResourceModal: React.FC<UploadResourceModalProps> = ({
             <input
               type="text"
               required
-              placeholder="e.g. Lecture 06: Graph Algorithms & Minimum Spanning Trees"
+              placeholder="e.g. Official Course Syllabus & Academic Integrity Policy"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-slate-300 font-semibold focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-600"
@@ -136,25 +270,25 @@ export const UploadResourceModal: React.FC<UploadResourceModalProps> = ({
 
             <div className="space-y-1">
               <label className="block text-xs font-bold uppercase tracking-wider text-slate-600">
-                Resource Type
+                Document Format
               </label>
               <select
                 value={fileType}
                 onChange={(e) => setFileType(e.target.value as ClassResource['fileType'])}
                 className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-slate-300 font-medium focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-600"
               >
-                <option value="pdf">PDF Document</option>
-                <option value="slide">Slide Deck (.pptx, .pdf)</option>
-                <option value="link">Web Link / Repo</option>
+                <option value="pdf">PDF Document (.pdf)</option>
+                <option value="word">Word Document (.docx)</option>
+                <option value="excel">Excel Spreadsheet (.xlsx)</option>
+                <option value="slide">Slide Deck (.pdf / .pptx)</option>
                 <option value="code">Code Repository (.zip)</option>
-                <option value="document">Word Doc (.docx)</option>
               </select>
             </div>
           </div>
 
           <div className="space-y-1">
             <label className="block text-xs font-bold uppercase tracking-wider text-slate-600">
-              Brief Description (Optional)
+              Brief Description & Overview
             </label>
             <textarea
               rows={2}
@@ -165,23 +299,37 @@ export const UploadResourceModal: React.FC<UploadResourceModalProps> = ({
             />
           </div>
 
-          <div className="space-y-1">
-            <label className="block text-xs font-bold uppercase tracking-wider text-slate-600">
-              File Path or External URL
+          {/* Upload Actual Document File */}
+          <div className="space-y-1.5 p-3 rounded-xl border border-dashed border-slate-300 bg-slate-50">
+            <label className="block text-xs font-bold text-slate-700">
+              Upload Document File (.pdf, .docx, .xlsx)
             </label>
-            <input
-              type="text"
-              placeholder="https://example.edu/cs201/lecture06.pdf"
-              value={url}
-              onChange={(e) => setUrl(e.target.value)}
-              className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-600"
-            />
+            <div className="flex items-center gap-3">
+              <label className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-purple-700 hover:bg-purple-800 text-white text-xs font-bold cursor-pointer transition-colors shadow-2xs">
+                <Upload className="w-3.5 h-3.5" />
+                <span>Choose File</span>
+                <input
+                  type="file"
+                  className="hidden"
+                  accept=".pdf,.docx,.doc,.xlsx,.xls,.csv"
+                  onChange={handleFileChange}
+                />
+              </label>
+              <div className="min-w-0 flex-1">
+                <p className="text-xs font-semibold text-slate-800 truncate">
+                  {fileName || 'No file selected (will use template)'}
+                </p>
+                <p className="text-[10px] text-slate-400">
+                  {fileSize} &bull; Opens directly in CampusHub document viewer
+                </p>
+              </div>
+            </div>
           </div>
 
           {success && (
             <div className="p-3 bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs rounded-xl flex items-center gap-2">
               <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-              <span>Resource published to class portal!</span>
+              <span>Guide published! Students and teachers can now open and read it.</span>
             </div>
           )}
 
@@ -197,7 +345,7 @@ export const UploadResourceModal: React.FC<UploadResourceModalProps> = ({
               type="submit"
               className="px-5 py-2.5 rounded-xl text-xs font-bold text-white bg-purple-700 hover:bg-purple-800 transition-colors shadow-sm shadow-purple-200"
             >
-              Publish Resource
+              Publish Guide
             </button>
           </div>
         </form>

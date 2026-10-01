@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { db } from '../../services/db';
-import { UniversityClass, Assignment, Announcement, ClassResource, Submission } from '../../types';
+import { UniversityClass, Assignment, Announcement, ClassResource, Submission, DocumentItem } from '../../types';
+import { DocumentViewerModal } from '../common/DocumentViewerModal';
+import { detectFileType, downloadDocumentFile } from '../../utils/documentViewerHelper';
 import {
   Megaphone,
   FileCheck2,
@@ -27,7 +29,10 @@ import {
   FolderArchive,
   Download,
   Mail,
-  UserCheck
+  UserCheck,
+  Table,
+  Eye,
+  Sparkles
 } from 'lucide-react';
 
 interface ClassViewProps {
@@ -55,11 +60,19 @@ export const ClassView: React.FC<ClassViewProps> = ({
   const [copiedCode, setCopiedCode] = useState(false);
   const [expandedAssignmentId, setExpandedAssignmentId] = useState<string | null>(null);
 
+  // Document Viewer Modal State (opens PDF, Word, Excel files for students and teachers)
+  const [viewerDoc, setViewerDoc] = useState<DocumentItem | null>(null);
+
   // Stream announcement composer state
   const [isAnnouncing, setIsAnnouncing] = useState(false);
   const [announcementTitle, setAnnouncementTitle] = useState('');
   const [announcementContent, setAnnouncementContent] = useState('');
   const [announcementPinned, setAnnouncementPinned] = useState(false);
+  const [announcementAttachment, setAnnouncementAttachment] = useState<{
+    name: string;
+    type: 'pdf' | 'word' | 'excel';
+    size: string;
+  } | null>(null);
   const [isPosting, setIsPosting] = useState(false);
 
   // Live course data
@@ -97,12 +110,23 @@ export const ClassView: React.FC<ClassViewProps> = ({
       title: announcementTitle.trim() || 'Class Announcement',
       content: announcementContent.trim(),
       priority: 'normal',
-      pinned: announcementPinned
+      pinned: announcementPinned,
+      attachments: announcementAttachment
+        ? [
+            {
+              name: announcementAttachment.name,
+              url: '#',
+              size: announcementAttachment.size,
+              type: announcementAttachment.type
+            }
+          ]
+        : []
     });
 
     setAnnouncementTitle('');
     setAnnouncementContent('');
     setAnnouncementPinned(false);
+    setAnnouncementAttachment(null);
     setIsAnnouncing(false);
     setIsPosting(false);
   };
@@ -277,6 +301,70 @@ export const ClassView: React.FC<ClassViewProps> = ({
                     className="w-full text-xs p-3 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 text-slate-900 dark:text-white leading-relaxed"
                   />
 
+                  {/* Optional File / Guide Attachment for Announcement */}
+                  <div className="pt-1 pb-1 space-y-1.5 border-t border-slate-100 dark:border-slate-800">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1">
+                        <Paperclip className="w-3 h-3 text-indigo-500" />
+                        Attach Study Guide / Handout (Optional)
+                      </span>
+                      {announcementAttachment && (
+                        <button
+                          type="button"
+                          onClick={() => setAnnouncementAttachment(null)}
+                          className="text-[10px] text-rose-500 hover:underline font-semibold"
+                        >
+                          Remove Attachment
+                        </button>
+                      )}
+                    </div>
+
+                    {announcementAttachment ? (
+                      <div className="flex items-center gap-2 p-2 rounded-xl bg-indigo-50 dark:bg-indigo-950/50 border border-indigo-200 dark:border-indigo-800 text-xs">
+                        {announcementAttachment.type === 'excel' ? (
+                          <Table className="w-4 h-4 text-emerald-600 shrink-0" />
+                        ) : announcementAttachment.type === 'word' ? (
+                          <FileText className="w-4 h-4 text-blue-600 shrink-0" />
+                        ) : (
+                          <FileText className="w-4 h-4 text-rose-600 shrink-0" />
+                        )}
+                        <span className="font-bold text-indigo-900 dark:text-indigo-200 truncate">
+                          {announcementAttachment.name}
+                        </span>
+                        <span className="text-[10px] text-indigo-500 shrink-0">
+                          ({announcementAttachment.size} &bull; {announcementAttachment.type.toUpperCase()})
+                        </span>
+                      </div>
+                    ) : (
+                      <div className="flex flex-wrap gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => setAnnouncementAttachment({ name: 'Course_Study_Guide_Review.pdf', type: 'pdf', size: '420 KB' })}
+                          className="px-2.5 py-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-[11px] text-slate-700 dark:text-slate-300 font-medium flex items-center gap-1.5 cursor-pointer"
+                        >
+                          <FileText className="w-3.5 h-3.5 text-rose-500" />
+                          <span>+ Study Guide (PDF)</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setAnnouncementAttachment({ name: 'Project_Rubric_Specifications.docx', type: 'word', size: '360 KB' })}
+                          className="px-2.5 py-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-[11px] text-slate-700 dark:text-slate-300 font-medium flex items-center gap-1.5 cursor-pointer"
+                        >
+                          <FileText className="w-3.5 h-3.5 text-blue-500" />
+                          <span>+ Rubric Specs (Word)</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setAnnouncementAttachment({ name: 'Formula_Calculations_Sheet.xlsx', type: 'excel', size: '190 KB' })}
+                          className="px-2.5 py-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-[11px] text-slate-700 dark:text-slate-300 font-medium flex items-center gap-1.5 cursor-pointer"
+                        >
+                          <Table className="w-3.5 h-3.5 text-emerald-500" />
+                          <span>+ Calculations (Excel)</span>
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
                   <div className="flex items-center justify-between pt-1">
                     <label className="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-400 cursor-pointer">
                       <input
@@ -369,6 +457,57 @@ export const ClassView: React.FC<ClassViewProps> = ({
                         {ann.content}
                       </p>
                     </div>
+
+                    {/* Announcement Document Attachments (Study Guides, Syllabi, Excel files) */}
+                    {ann.attachments && ann.attachments.length > 0 && (
+                      <div className="pt-2 flex flex-wrap gap-2 border-t border-slate-100 dark:border-slate-800">
+                        {ann.attachments.map((att, aIdx) => {
+                          const fType = att.type || detectFileType(att.name);
+                          const isExcel = fType === 'excel';
+                          const isWord = fType === 'word';
+
+                          return (
+                            <button
+                              key={aIdx}
+                              type="button"
+                              onClick={() =>
+                                setViewerDoc({
+                                  title: att.name.replace(/\.[^/.]+$/, '').replace(/[_-]/g, ' '),
+                                  fileName: att.name,
+                                  fileType: fType,
+                                  fileSize: att.size || '340 KB',
+                                  fileData: att.fileData,
+                                  authorName: ann.authorName,
+                                  authorRole: 'teacher',
+                                  courseName: course.name,
+                                  courseCode: course.code,
+                                  uploadedAt: ann.createdAt
+                                })
+                              }
+                              className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/80 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 text-xs font-semibold text-slate-800 dark:text-slate-200 transition-all cursor-pointer group shadow-2xs"
+                              title="Click to open guide/document"
+                            >
+                              {isExcel ? (
+                                <Table className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                              ) : isWord ? (
+                                <FileText className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+                              ) : (
+                                <FileText className="w-3.5 h-3.5 text-rose-600 shrink-0" />
+                              )}
+                              <span className="truncate max-w-[180px] sm:max-w-xs group-hover:text-indigo-600 dark:group-hover:text-indigo-400">
+                                {att.name}
+                              </span>
+                              {att.size && (
+                                <span className="text-[10px] text-slate-400 font-normal">({att.size})</span>
+                              )}
+                              <span className="ml-1 text-[10px] px-1.5 py-0.5 rounded bg-indigo-100 dark:bg-indigo-900/60 text-indigo-700 dark:text-indigo-300 font-bold group-hover:bg-indigo-600 group-hover:text-white transition-colors">
+                                Open Guide
+                              </span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
@@ -505,18 +644,74 @@ export const ClassView: React.FC<ClassViewProps> = ({
                               {assignment.description}
                             </p>
 
-                            {/* Attachments */}
+                            {/* Attachments & Study Guides */}
                             {assignment.attachments && assignment.attachments.length > 0 && (
-                              <div className="space-y-1.5 pt-2">
-                                <p className="font-bold text-[11px] uppercase tracking-wider text-slate-500">Materials</p>
-                                <div className="flex flex-wrap gap-2">
-                                  {assignment.attachments.map((att, i) => (
-                                    <div key={i} className="flex items-center gap-2 p-2 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
-                                      <Paperclip className="w-3.5 h-3.5 text-indigo-500" />
-                                      <span className="font-medium text-slate-700 dark:text-slate-200">{att.name}</span>
-                                      <span className="text-[10px] text-slate-400">({att.size})</span>
-                                    </div>
-                                  ))}
+                              <div className="space-y-2 pt-2">
+                                <div className="flex items-center justify-between">
+                                  <p className="font-bold text-[11px] uppercase tracking-wider text-slate-500">
+                                    Class Handouts & Study Guides ({assignment.attachments.length})
+                                  </p>
+                                  <span className="text-[10px] font-semibold text-indigo-600 dark:text-indigo-400 flex items-center gap-1">
+                                    <Sparkles className="w-3 h-3" /> Click any file to open & read
+                                  </span>
+                                </div>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
+                                  {assignment.attachments.map((att, i) => {
+                                    const fType = att.type || detectFileType(att.name);
+                                    const isExcel = fType === 'excel';
+                                    const isWord = fType === 'word';
+
+                                    return (
+                                      <div
+                                        key={i}
+                                        onClick={() =>
+                                          setViewerDoc({
+                                            title: att.name.replace(/\.[^/.]+$/, '').replace(/[_-]/g, ' '),
+                                            fileName: att.name,
+                                            fileType: fType,
+                                            fileSize: att.size || '320 KB',
+                                            fileData: att.fileData,
+                                            authorName: course.teacherName,
+                                            authorRole: 'teacher',
+                                            courseName: course.name,
+                                            courseCode: course.code,
+                                            uploadedAt: assignment.createdAt
+                                          })
+                                        }
+                                        className="flex items-center justify-between p-3 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:border-indigo-400 dark:hover:border-indigo-500 hover:shadow-xs transition-all cursor-pointer group"
+                                      >
+                                        <div className="flex items-center gap-2.5 min-w-0">
+                                          <div
+                                            className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
+                                              isExcel
+                                                ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300'
+                                                : isWord
+                                                ? 'bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300'
+                                                : 'bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-300'
+                                            }`}
+                                          >
+                                            {isExcel ? <Table className="w-4 h-4" /> : <FileText className="w-4 h-4" />}
+                                          </div>
+                                          <div className="min-w-0">
+                                            <p className="font-semibold text-xs text-slate-800 dark:text-slate-200 truncate group-hover:text-indigo-600 dark:group-hover:text-indigo-400">
+                                              {att.name}
+                                            </p>
+                                            <p className="text-[10px] text-slate-400">
+                                              {isExcel ? 'Excel Sheet' : isWord ? 'Word Document' : 'PDF Guide'}
+                                              {att.size && ` • ${att.size}`}
+                                            </p>
+                                          </div>
+                                        </div>
+                                        <button
+                                          type="button"
+                                          className="p-1 rounded-lg text-slate-400 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 hover:bg-slate-100 dark:hover:bg-slate-700 cursor-pointer"
+                                          title="Open Document"
+                                        >
+                                          <Eye className="w-4 h-4" />
+                                        </button>
+                                      </div>
+                                    );
+                                  })}
                                 </div>
                               </div>
                             )}
@@ -563,50 +758,102 @@ export const ClassView: React.FC<ClassViewProps> = ({
                   </h3>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
-                    {resources.map((res) => (
-                      <div
-                        key={res.id}
-                        className="p-4 rounded-2xl bg-white dark:bg-slate-850 border border-slate-200 dark:border-slate-800 space-y-2.5 shadow-xs"
-                      >
-                        <div className="flex items-start justify-between gap-2">
-                          <div className="flex items-center gap-2.5">
-                            <div className="w-8 h-8 rounded-lg bg-purple-100 text-purple-700 dark:bg-purple-950 dark:text-purple-300 flex items-center justify-center shrink-0">
-                              <FolderArchive className="w-4 h-4" />
+                    {resources.map((res) => {
+                      const fType = res.fileType === 'excel' ? 'excel' : res.fileType === 'word' || res.fileType === 'document' ? 'word' : 'pdf';
+                      const isExcel = fType === 'excel';
+                      const isWord = fType === 'word';
+
+                      return (
+                        <div
+                          key={res.id}
+                          className="p-4 rounded-2xl bg-white dark:bg-slate-850 border border-slate-200 dark:border-slate-800 space-y-3 shadow-xs hover:border-indigo-400 dark:hover:border-indigo-500 transition-colors"
+                        >
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="flex items-center gap-2.5 min-w-0">
+                              <div
+                                className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 shadow-2xs ${
+                                  isExcel
+                                    ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300'
+                                    : isWord
+                                    ? 'bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300'
+                                    : 'bg-purple-100 text-purple-700 dark:bg-purple-950 dark:text-purple-300'
+                                }`}
+                              >
+                                {isExcel ? <Table className="w-4 h-4" /> : isWord ? <FileText className="w-4 h-4" /> : <FolderArchive className="w-4 h-4" />}
+                              </div>
+                              <div className="min-w-0">
+                                <h4 className="font-bold text-xs text-slate-900 dark:text-white line-clamp-1">
+                                  {res.title}
+                                </h4>
+                                <span className="text-[10px] text-slate-400">
+                                  {res.category} &bull; {res.fileSize || '340 KB'} &bull;{' '}
+                                  <span className="font-bold uppercase text-indigo-600 dark:text-indigo-400">
+                                    {isExcel ? 'Excel' : isWord ? 'Word' : 'PDF'}
+                                  </span>
+                                </span>
+                              </div>
                             </div>
-                            <div>
-                              <h4 className="font-bold text-xs text-slate-900 dark:text-white line-clamp-1">
-                                {res.title}
-                              </h4>
-                              <span className="text-[10px] text-slate-400">{res.category} &bull; {res.fileSize || 'PDF'}</span>
-                            </div>
+
+                            {(isTeacher || isAdmin) && (
+                              <button
+                                onClick={() => handleDeleteResource(res.id)}
+                                className="p-1 rounded text-slate-400 hover:text-rose-600 cursor-pointer"
+                                title="Delete file"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            )}
                           </div>
 
-                          {(isTeacher || isAdmin) && (
-                            <button
-                              onClick={() => handleDeleteResource(res.id)}
-                              className="p-1 rounded text-slate-400 hover:text-rose-600"
-                              title="Delete file"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
+                          {res.description && (
+                            <p className="text-[11px] text-slate-500 line-clamp-2 leading-relaxed">
+                              {res.description}
+                            </p>
                           )}
+
+                          <div className="flex items-center justify-between pt-1 border-t border-slate-100 dark:border-slate-800">
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setViewerDoc({
+                                  title: res.title,
+                                  fileName: res.fileName || `${res.title}.${isExcel ? 'xlsx' : isWord ? 'docx' : 'pdf'}`,
+                                  fileType: fType,
+                                  fileSize: res.fileSize || '340 KB',
+                                  fileData: res.fileData,
+                                  authorName: res.teacherName || course.teacherName,
+                                  authorRole: 'teacher',
+                                  courseName: course.name,
+                                  courseCode: course.code,
+                                  uploadedAt: res.uploadedAt,
+                                  description: res.description
+                                })
+                              }
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-2xs transition-colors cursor-pointer"
+                            >
+                              <Eye className="w-3.5 h-3.5" />
+                              <span>Open Guide / Material</span>
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() =>
+                                downloadDocumentFile({
+                                  title: res.title,
+                                  fileName: res.fileName || `${res.title}.${isExcel ? 'xlsx' : isWord ? 'docx' : 'pdf'}`,
+                                  fileType: fType,
+                                  fileData: res.fileData
+                                })
+                              }
+                              className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
+                              title="Download resource"
+                            >
+                              <Download className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
                         </div>
-
-                        {res.description && (
-                          <p className="text-[11px] text-slate-500 line-clamp-2">{res.description}</p>
-                        )}
-
-                        <a
-                          href={res.url}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="inline-flex items-center gap-1 text-[11px] font-bold text-indigo-600 dark:text-indigo-400 hover:underline pt-1"
-                        >
-                          <ExternalLink className="w-3 h-3" />
-                          <span>Access Material</span>
-                        </a>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
               )}
@@ -733,15 +980,41 @@ export const ClassView: React.FC<ClassViewProps> = ({
                         </td>
                         <td className="py-3 px-4">
                           {sub ? (
-                            sub.status === 'reviewed' ? (
-                              <span className="font-bold text-emerald-600 bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.5 rounded-md">
-                                Graded
-                              </span>
-                            ) : (
-                              <span className="font-bold text-indigo-600 bg-indigo-50 dark:bg-indigo-950/60 px-2 py-0.5 rounded-md">
-                                Turned in
-                              </span>
-                            )
+                            <div className="space-y-1">
+                              {sub.status === 'reviewed' ? (
+                                <span className="font-bold text-emerald-600 bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.5 rounded-md inline-block">
+                                  Graded
+                                </span>
+                              ) : (
+                                <span className="font-bold text-indigo-600 bg-indigo-50 dark:bg-indigo-950/60 px-2 py-0.5 rounded-md inline-block">
+                                  Turned in
+                                </span>
+                              )}
+                              {sub.submissionType === 'file' && (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const fType = sub.fileType || detectFileType(sub.content);
+                                    setViewerDoc({
+                                      title: `${a.title} - My Submission`,
+                                      fileName: sub.content,
+                                      fileType: fType,
+                                      fileSize: sub.fileSize || '320 KB',
+                                      fileData: sub.fileData,
+                                      authorName: currentUser.name,
+                                      authorRole: 'student',
+                                      courseName: course.name,
+                                      courseCode: course.code,
+                                      uploadedAt: sub.submittedAt
+                                    });
+                                  }}
+                                  className="flex items-center gap-1 text-[11px] font-bold text-indigo-600 dark:text-indigo-400 hover:underline cursor-pointer"
+                                >
+                                  <Eye className="w-3 h-3" />
+                                  <span>View My File</span>
+                                </button>
+                              )}
+                            </div>
                           ) : (
                             <span className="font-bold text-rose-600 bg-rose-50 dark:bg-rose-950/60 px-2 py-0.5 rounded-md">
                               Missing / Not submitted
@@ -784,25 +1057,66 @@ export const ClassView: React.FC<ClassViewProps> = ({
                       <p className="text-xs text-slate-400 italic">No submissions turned in yet.</p>
                     ) : (
                       <div className="divide-y divide-slate-100 dark:divide-slate-800 text-xs">
-                        {subs.map((s) => (
-                          <div key={s.id} className="py-2.5 flex items-center justify-between gap-3">
-                            <div>
-                              <span className="font-bold text-slate-800 dark:text-slate-200">{s.studentName}</span>
-                              <span className="text-[11px] text-slate-400 block">{s.content}</span>
+                        {subs.map((s) => {
+                          const fType = s.fileType || detectFileType(s.content);
+                          const isExcel = fType === 'excel';
+                          const isWord = fType === 'word';
+
+                          return (
+                            <div key={s.id} className="py-2.5 flex items-center justify-between gap-3">
+                              <div className="min-w-0">
+                                <span className="font-bold text-slate-800 dark:text-slate-200 block truncate">
+                                  {s.studentName}
+                                </span>
+                                <span className="text-[11px] text-slate-400 block truncate font-mono">
+                                  {s.content}
+                                </span>
+                              </div>
+                              <div className="flex items-center gap-2 shrink-0">
+                                <span className="font-mono font-bold text-slate-700 dark:text-slate-300 mr-1">
+                                  {s.grade !== undefined ? `${s.grade} / ${a.points}` : 'Ungraded'}
+                                </span>
+
+                                {s.submissionType === 'file' && (
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      setViewerDoc({
+                                        title: `${a.title} - ${s.studentName}'s Submission`,
+                                        fileName: s.content,
+                                        fileType: fType,
+                                        fileSize: s.fileSize || '380 KB',
+                                        fileData: s.fileData,
+                                        authorName: s.studentName,
+                                        authorRole: 'student',
+                                        courseName: course.name,
+                                        courseCode: course.code,
+                                        uploadedAt: s.submittedAt
+                                      })
+                                    }
+                                    className="inline-flex items-center gap-1 px-2.5 py-1 bg-purple-50 dark:bg-purple-950/50 hover:bg-purple-100 dark:hover:bg-purple-900/60 text-purple-700 dark:text-purple-300 rounded-lg font-bold text-xs border border-purple-200 dark:border-purple-800 cursor-pointer transition-colors"
+                                    title="Open student document"
+                                  >
+                                    {isExcel ? (
+                                      <Table className="w-3.5 h-3.5 text-emerald-600" />
+                                    ) : (
+                                      <FileText className="w-3.5 h-3.5 text-blue-600" />
+                                    )}
+                                    <span>Open File</span>
+                                  </button>
+                                )}
+
+                                <button
+                                  type="button"
+                                  onClick={() => onGradeSubmission(s, a, course)}
+                                  className="px-2.5 py-1 bg-slate-100 dark:bg-slate-800 hover:bg-indigo-50 dark:hover:bg-slate-700 text-indigo-600 dark:text-indigo-400 rounded-lg font-bold cursor-pointer transition-colors"
+                                >
+                                  {s.status === 'reviewed' ? 'Edit Grade' : 'Grade'}
+                                </button>
+                              </div>
                             </div>
-                            <div className="flex items-center gap-3">
-                              <span className="font-mono font-bold text-slate-700 dark:text-slate-300">
-                                {s.grade !== undefined ? `${s.grade} / ${a.points}` : 'Ungraded'}
-                              </span>
-                              <button
-                                onClick={() => onGradeSubmission(s, a, course)}
-                                className="px-2.5 py-1 bg-slate-100 dark:bg-slate-800 hover:bg-indigo-50 dark:hover:bg-slate-700 text-indigo-600 dark:text-indigo-400 rounded-lg font-bold"
-                              >
-                                {s.status === 'reviewed' ? 'Edit Grade' : 'Grade'}
-                              </button>
-                            </div>
-                          </div>
-                        ))}
+                          );
+                        })}
                       </div>
                     )}
                   </div>
@@ -811,6 +1125,14 @@ export const ClassView: React.FC<ClassViewProps> = ({
             </div>
           )}
         </div>
+      )}
+
+      {/* Document Viewer Modal for reading guides, handouts, PDFs, Word & Excel files */}
+      {viewerDoc && (
+        <DocumentViewerModal
+          document={viewerDoc}
+          onClose={() => setViewerDoc(null)}
+        />
       )}
     </div>
   );

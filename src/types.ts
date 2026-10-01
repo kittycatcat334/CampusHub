@@ -92,6 +92,24 @@ export interface Enrollment {
   enrolledAt: string;
 }
 
+export type DocumentFileType = 'pdf' | 'word' | 'excel' | 'image' | 'text' | 'code' | 'other';
+
+export interface DocumentItem {
+  id?: string;
+  title: string;
+  fileName: string;
+  fileType: DocumentFileType;
+  fileSize?: string;
+  fileData?: string; // base64 / data URL / raw text
+  authorName?: string;
+  authorRole?: string;
+  courseName?: string;
+  courseCode?: string;
+  uploadedAt?: string;
+  description?: string;
+  downloadUrl?: string;
+}
+
 export type AssignmentStatus = 'pending' | 'submitted' | 'reviewed';
 
 export interface ProjectMilestone {
@@ -119,6 +137,8 @@ export interface Assignment {
     name: string;
     url: string;
     size?: string;
+    type?: DocumentFileType;
+    fileData?: string;
   }[];
   createdAt: string;
 }
@@ -181,6 +201,9 @@ export interface Submission {
   submissionType: 'file' | 'link' | 'text';
   content: string; // file name or URL or written text
   fileSize?: string;
+  fileData?: string; // base64, data URL, or text
+  fileMimeType?: string;
+  fileType?: DocumentFileType;
   status: 'submitted' | 'reviewed';
   grade?: number; // e.g. 95
   feedback?: string;
@@ -210,6 +233,8 @@ export interface Announcement {
     name: string;
     url: string;
     size?: string;
+    type?: DocumentFileType;
+    fileData?: string;
   }[];
 }
 
@@ -227,11 +252,13 @@ export interface ClassResource {
   description?: string;
   topic?: string;
   category: ResourceCategory;
-  fileType: 'pdf' | 'slide' | 'link' | 'zip' | 'document' | 'code';
+  fileType: 'pdf' | 'slide' | 'link' | 'zip' | 'document' | 'code' | 'excel' | 'word';
   url: string;
   fileSize?: string;
   uploadedAt: string;
   contentPreview?: string;
+  fileData?: string;
+  fileName?: string;
 }
 
 export interface AcademicWorkItem {

@@ -12,7 +12,8 @@ import {
   Classroom,
   Institution,
   PersonalScheduleItem,
-  AcademicNote
+  AcademicNote,
+  DocumentFileType
 } from '../types';
 
 // Pre-seeded Multi-Tenant Universities / Institutions
@@ -488,8 +489,9 @@ const DEFAULT_ASSIGNMENTS: Assignment[] = [
     points: 40,
     category: 'Homework',
     attachments: [
-      { name: 'ProblemSet3_Prompts.pdf', url: '#', size: '280 KB' },
-      { name: 'LaTeX_Template.tex', url: '#', size: '15 KB' }
+      { name: 'ProblemSet3_Study_Guide.pdf', url: '#', size: '280 KB', type: 'pdf' },
+      { name: 'Matrix_Derivations_Workbook.xlsx', url: '#', size: '184 KB', type: 'excel' },
+      { name: 'Assignment_Requirements.docx', url: '#', size: '320 KB', type: 'word' }
     ],
     createdAt: '2026-09-08T09:00:00Z'
   },
@@ -503,8 +505,9 @@ const DEFAULT_ASSIGNMENTS: Assignment[] = [
     points: 50,
     category: 'Lab',
     attachments: [
-      { name: 'RBTree_Starter_Kit.zip', url: '#', size: '1.4 MB' },
-      { name: 'Specification_Rubric.pdf', url: '#', size: '320 KB' }
+      { name: 'RBTree_Specification_Guide.pdf', url: '#', size: '320 KB', type: 'pdf' },
+      { name: 'Benchmark_Results_Template.xlsx', url: '#', size: '142 KB', type: 'excel' },
+      { name: 'Lab_Report_Template.docx', url: '#', size: '342 KB', type: 'word' }
     ],
     createdAt: '2026-09-10T10:00:00Z'
   },
@@ -518,7 +521,8 @@ const DEFAULT_ASSIGNMENTS: Assignment[] = [
     points: 60,
     category: 'Lab',
     attachments: [
-      { name: 'Coulomb_Lab_Manual.pdf', url: '#', size: '540 KB' }
+      { name: 'Coulomb_Lab_Manual.pdf', url: '#', size: '540 KB', type: 'pdf' },
+      { name: 'Experimental_Data_Model.xlsx', url: '#', size: '198 KB', type: 'excel' }
     ],
     createdAt: '2026-09-12T11:00:00Z'
   },
@@ -532,7 +536,8 @@ const DEFAULT_ASSIGNMENTS: Assignment[] = [
     points: 100,
     category: 'Homework',
     attachments: [
-      { name: 'ProblemSet_4_Handout.pdf', url: '#', size: '540 KB' }
+      { name: 'ProblemSet_4_Handout.pdf', url: '#', size: '540 KB', type: 'pdf' },
+      { name: 'Principal_Components_Guide.docx', url: '#', size: '410 KB', type: 'word' }
     ],
     createdAt: '2026-09-12T14:30:00Z'
   },
@@ -546,7 +551,9 @@ const DEFAULT_ASSIGNMENTS: Assignment[] = [
     points: 75,
     category: 'Project',
     attachments: [
-      { name: 'Normalization_Guidelines.pdf', url: '#', size: '820 KB' }
+      { name: 'Normalization_Guidelines.pdf', url: '#', size: '820 KB', type: 'pdf' },
+      { name: 'Relational_Schema_Design.docx', url: '#', size: '520 KB', type: 'word' },
+      { name: 'Database_Schema_Dictionary.xlsx', url: '#', size: '165 KB', type: 'excel' }
     ],
     createdAt: '2026-09-14T09:00:00Z'
   },
@@ -559,7 +566,9 @@ const DEFAULT_ASSIGNMENTS: Assignment[] = [
     dueDate: '2026-09-08T23:59:00', // Past assignment (already reviewed)
     points: 40,
     category: 'Homework',
-    attachments: [],
+    attachments: [
+      { name: 'BigO_Proofs_Specification.pdf', url: '#', size: '380 KB', type: 'pdf' }
+    ],
     createdAt: '2026-09-01T08:00:00Z'
   }
 ];
@@ -575,6 +584,7 @@ const DEFAULT_SUBMISSIONS: Submission[] = [
     submissionType: 'file',
     content: 'Rivera_Alex_CS201_HW1_Proofs.pdf',
     fileSize: '412 KB',
+    fileType: 'pdf',
     status: 'reviewed',
     grade: 38,
     feedback: 'Excellent rigor on Problem 3 recursion tree proof. Watch out for Case 2 log factor base notation in Question 4.',
@@ -589,13 +599,40 @@ const DEFAULT_SUBMISSIONS: Submission[] = [
     studentEmail: 'm.lin@university.edu',
     submittedAt: '2026-09-08T22:10:00',
     submissionType: 'file',
-    content: 'MayaLin_HW1_RecurrenceProofs.pdf',
-    fileSize: '680 KB',
+    content: 'MayaLin_HW1_RecurrenceProofs.docx',
+    fileSize: '360 KB',
+    fileType: 'word',
     status: 'reviewed',
     grade: 40,
     feedback: 'Flawless proofs and clear step-by-step mathematical reasoning.',
     reviewedAt: '2026-09-11T16:30:00',
     reviewedBy: 'Dr. Robert Chen'
+  },
+  {
+    id: 'sub-3',
+    assignmentId: 'assign-1',
+    studentId: 'student-2',
+    studentName: 'Maya Lin',
+    studentEmail: 'm.lin@university.edu',
+    submittedAt: '2026-09-17T11:20:00',
+    submissionType: 'file',
+    content: 'MayaLin_RBTree_Benchmark_Analysis.xlsx',
+    fileSize: '240 KB',
+    fileType: 'excel',
+    status: 'submitted'
+  },
+  {
+    id: 'sub-4',
+    assignmentId: 'assign-today',
+    studentId: 'student-1',
+    studentName: 'Alex Rivera',
+    studentEmail: 'a.rivera@university.edu',
+    submittedAt: '2026-09-17T14:15:00',
+    submissionType: 'file',
+    content: 'Rivera_Alex_Matrix_Calculations.xlsx',
+    fileSize: '190 KB',
+    fileType: 'excel',
+    status: 'submitted'
   }
 ];
 
@@ -1989,6 +2026,9 @@ export const db = {
       submissionType: 'file' | 'link' | 'text';
       content: string;
       fileSize?: string;
+      fileData?: string;
+      fileMimeType?: string;
+      fileType?: DocumentFileType;
     }
   ): Submission {
     const all = this.getSubmissions();
