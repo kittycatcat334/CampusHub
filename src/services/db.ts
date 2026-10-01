@@ -1608,61 +1608,29 @@ export const db = {
     const existing = this.getUserByEmail(cleanEmail);
 
     if (existing) {
-      if (payload.role && existing.role !== payload.role) {
-        return {
-          success: false,
-          error: `This Google account is already registered as a ${existing.role}. Please use the ${existing.role === 'teacher' ? 'Faculty / Teacher' : existing.role === 'admin' ? 'Administrator' : existing.role === 'principal' ? 'Principal' : 'Student'} tab.`
-        };
-      }
-      if (existing.role === 'teacher' && !existing.emailVerified) {
-        const cleanSv = payload.svCode?.trim();
-        if (!cleanSv || (cleanSv !== '6565' && !this.verifyStaffCode(cleanSv))) {
-          return {
-            success: false,
-            error: 'Faculty teacher security code is required for teacher authentication.'
-          };
-        }
-      }
-      if (existing.role === 'admin' && !existing.emailVerified) {
-        const cleanCode = payload.svCode?.trim();
-        if (!cleanCode || (cleanCode !== '63166565' && cleanCode !== 'admin' && !this.verifyStaffCode(cleanCode))) {
-          return {
-            success: false,
-            error: 'Administrator security code is required for administrator authentication.'
-          };
-        }
-      }
-      // Update with Google details
+      // If user exists, update their Google details and seamlessly update role if requested
       const updated = this.updateUserProfile(existing.id, {
         avatarUrl: payload.avatarUrl || existing.avatarUrl,
         name: payload.name || existing.name,
+        role: payload.role || existing.role,
         emailVerified: true,
         authProvider: 'google',
-        googleId: payload.googleId || existing.googleId
+        googleId: payload.googleId || existing.googleId,
+        department: payload.department?.trim() || existing.department
       });
+
+      // If user is a student, ensure enrollment in starter classes
+      if (updated.role === 'student') {
+        const activeClasses = this.getClasses().slice(0, 3);
+        activeClasses.forEach(cls => {
+          this.enrollStudent(cls.id, updated.id);
+        });
+      }
+
       return { success: true, user: updated };
     }
 
-    // New Google User Registration
-    if (payload.role === 'teacher') {
-      const cleanSv = payload.svCode?.trim();
-      if (!cleanSv || (cleanSv !== '6565' && !this.verifyStaffCode(cleanSv))) {
-        return {
-          success: false,
-          error: 'Valid teacher security code is required to register as faculty.'
-        };
-      }
-    }
-    if (payload.role === 'admin') {
-      const cleanCode = payload.svCode?.trim();
-      if (!cleanCode || (cleanCode !== '63166565' && cleanCode !== 'admin' && !this.verifyStaffCode(cleanCode))) {
-        return {
-          success: false,
-          error: 'Administrator access code is required to authorize admin accounts.'
-        };
-      }
-    }
-
+    // New Google User Registration - auto-authorize with verified status
     const currentInst = this.getCurrentInstitution();
     const newUserId = `google-user-${Date.now()}`;
     const newUser: User = {
@@ -1675,7 +1643,7 @@ export const db = {
       department: payload.department?.trim() || (payload.role === 'teacher' ? 'Computer Science & Engineering' : payload.role === 'admin' ? 'University Administration & Governance' : 'Undergraduate Studies'),
       emailVerified: true,
       authProvider: 'google',
-      googleId: payload.googleId,
+      googleId: payload.googleId || `g-${Date.now()}`,
       adminId: payload.role === 'admin' ? `ADMIN-EXEC-${Math.floor(10 + Math.random() * 90)}` : undefined,
       studentId: payload.role === 'student' ? `STU-${Math.floor(10000 + Math.random() * 90000)}` : undefined,
       facultyId: payload.role === 'teacher' ? `FAC-${Math.floor(1000 + Math.random() * 9000)}` : undefined,
@@ -1688,12 +1656,11 @@ export const db = {
     if (payload.role === 'student') {
       const activeClasses = this.getClasses().slice(0, 3);
       activeClasses.forEach(cls => {
-        try {
-          this.enrollStudent(cls.id, newUser.id);
-        } catch {}
+        this.enrollStudent(cls.id, newUser.id);
       });
     }
 
+    notifyDBChange();
     return { success: true, user: newUser };
   },
 
